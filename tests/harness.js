@@ -1,18 +1,8 @@
-// Loads the built plugin into the page with a test-only window into its state, and gives the specs
-// helpers to set up a waveform and compare the fire's fuel with the bars wavesurfer drew.
+// Loads the built plugin into the page, with the test-only window into its state that tests/server.mjs
+// adds, and gives the specs helpers to set up a waveform and compare the fire's fuel with the bars
+// wavesurfer drew.
 import WaveSurfer from "wavesurfer.js";
 import TimelinePlugin from "wavesurfer.js/dist/plugins/timeline.esm.js";
-
-const load = async () => {
-  const source = (await (await fetch("/dist/doomfire.esm.js")).text()).replace(/\r\n/g, "\n");
-  const api = "    return {\n      ignite,";
-  const computeHeat = "    const computeHeat = () => {\n";
-  if (!source.includes(api) || !source.includes(computeHeat)) throw new Error("the test hook points are missing from dist/doomfire.esm.js");
-  const hooked = source
-    .replace(api, "    return {\n      __state: () => ({ fuelTop, fuelBottom, laneCount, simW, padL, cols, rows, cellPx, originPx, heat, palette, sparks, layer }),\n      ignite,")
-    .replace(computeHeat, computeHeat + "      window.fullHeatCount = (window.fullHeatCount || 0) + 1;\n");
-  return import(URL.createObjectURL(new Blob([hooked], { type: "text/javascript" })));
-};
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const until = (fn, ms) =>
@@ -89,8 +79,15 @@ const makeSetup = (Plugin) =>
     ws.setMuted(true);
     if (timeline) ws.registerPlugin(TimelinePlugin.create());
     const fire = ws.registerPlugin(Plugin.create({ pixelSize: 6, ...plugin }));
-    if (load) await load(ws);
-    else await ws.loadBlob(wav(makeBuffer(seconds, rate, gains, shapes[shape])));
+    if (load) {
+      await load(ws);
+    } else {
+      // Hand wavesurfer.js the samples, as the demo does, so it doesn't decode the WAV again:
+      // decoding opens an AudioContext, which can take seconds.
+      const buffer = makeBuffer(seconds, rate, gains, shapes[shape]);
+      const channels = gains.map((_, ch) => buffer.getChannelData(ch));
+      await ws.loadBlob(wav(buffer), channels, buffer.duration);
+    }
     await wait(500);
     return { ws, fire, container, state: () => fire.__state() };
   };
@@ -178,7 +175,7 @@ const alphaSum = (canvas) => {
 };
 
 try {
-  const mod = await load();
+  const mod = await import("./doomfire.under-test.js");
   window.harness = { WaveSurfer, mod, Plugin: mod.default, setup: makeSetup(mod.default), compareFuel, makeBuffer, wav, sinePeaks, wait, until, hot, alphaSum };
 } catch (error) {
   window.harnessError = String((error && error.stack) || error);

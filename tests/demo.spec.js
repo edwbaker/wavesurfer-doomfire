@@ -27,9 +27,6 @@ const wavFile = (seconds, rate = 22050) => {
 
 const status = (page) => page.locator("#stage-status");
 
-// the page fetches wavesurfer.js and renders its test tape before it's ready
-test.describe.configure({ timeout: 60_000 });
-
 test.beforeEach(async ({ page }) => {
   // count the decodes the page starts and finishes
   await page.addInitScript(() => {
