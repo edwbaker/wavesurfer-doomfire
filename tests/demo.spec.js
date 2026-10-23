@@ -1,4 +1,4 @@
-// The demo page, index.html, as a visitor uses it. It loads wavesurfer.js from jsDelivr.
+// The demo page, index.html, as a visitor uses it. It loads wavesurfer.js from cdn.audioblast.org.
 import { test, expect } from "./fixtures.js";
 
 // a mono 16-bit WAV of 220 Hz beats
@@ -127,8 +127,8 @@ test("when a second file is chosen before the first decodes, the second one wins
   await expect(page.locator("#time")).toHaveText("0:00 / 0:02");
 });
 
-test("explains why the demo can't run when jsDelivr is blocked", async ({ page }) => {
-  await page.route("https://cdn.jsdelivr.net/**", (route) => route.abort());
+test("explains why the demo can't run when cdn.audioblast.org is blocked", async ({ page }) => {
+  await page.route("https://cdn.audioblast.org/**", (route) => route.abort());
   await page.goto("/");
-  await expect(status(page)).toContainText("Couldn't load wavesurfer.js from cdn.jsdelivr.net");
+  await expect(status(page)).toContainText("Couldn't load wavesurfer.js from cdn.audioblast.org");
 });
