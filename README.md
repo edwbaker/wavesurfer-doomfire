@@ -72,9 +72,10 @@ npm run build
 
 1. Bump the version with `npm version patch` (or `minor`, `major`), which commits and tags `vX.Y.Z`.
 2. Push the commit and tag: `git push --follow-tags`.
-3. Publish a GitHub release for the tag. The `Publish to npm` workflow builds the package and publishes it with provenance; it stops if the tag doesn't match the version in `package.json`.
+3. Publish a GitHub release for the tag. The `Publish to npm` workflow builds the package and stages it on npm with provenance; it stops if the tag doesn't match the version in `package.json`.
+4. Approve the staged version with 2FA to publish it: `npm stage list wavesurfer-doomfire`, then `npm stage approve <stage-id>`, or approve it on npmjs.com.
 
-The workflow signs in with npm trusted publishing, which is set up once on npmjs.com under the package's settings: Trusted Publisher → GitHub Actions, user `edwbaker`, repository `wavesurfer-doomfire`, workflow `publish.yml`.
+The workflow signs in with npm trusted publishing, which is set up once on npmjs.com under the package's settings: Trusted Publisher → GitHub Actions, user `edwbaker`, repository `wavesurfer-doomfire`, workflow `publish.yml`, with the `npm stage publish` permission. The workflow can also be run by hand from the Actions tab to stage the version on `main` again.
 
 ## Credits
 

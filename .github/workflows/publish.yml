@@ -1,11 +1,14 @@
-# Publishes the package to npm, with provenance, when a GitHub release is published.
-# Authenticates with npm trusted publishing: link this repository and workflow on npmjs.com
-# under the package's settings (Trusted Publisher → GitHub Actions); no npm token is stored here.
+# Stages the package on npm, with provenance, when a GitHub release is published. A maintainer then
+# approves the staged version with 2FA (npm stage approve, or on npmjs.com) to publish it.
+# Authenticates with npm trusted publishing: the trust relationship for this repository and workflow
+# on npmjs.com needs the "npm stage publish" permission; no npm token is stored here.
+# Run it by hand (workflow_dispatch) to stage the version in package.json on main again.
 name: Publish to npm
 
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -22,6 +25,7 @@ jobs:
           registry-url: https://registry.npmjs.org
           cache: npm
       - name: Check the release tag matches package.json
+        if: github.event_name == 'release'
         run: |
           version="$(node -p "require('./package.json').version")"
           tag="${GITHUB_REF_NAME#v}"
@@ -30,4 +34,5 @@ jobs:
             exit 1
           fi
       - run: npm ci
-      - run: npm publish --provenance --access public
+      - run: npm run build
+      - run: npm stage publish --provenance --access public
