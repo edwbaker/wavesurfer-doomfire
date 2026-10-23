@@ -56,7 +56,7 @@ var defaults = {
   gain: 1,
   layer: "back",
   opacity: 1,
-  pixelSize: 3,
+  pixelSize: 4,
   debug: false,
   burning: true,
   fftSize: 2048

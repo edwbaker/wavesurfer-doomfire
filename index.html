@@ -439,8 +439,8 @@
       <select id="cell">
         <option value="1">1 px</option>
         <option value="2">2 px</option>
-        <option value="3" selected>3 px</option>
-        <option value="4">4 px</option>
+        <option value="3">3 px</option>
+        <option value="4" selected>4 px</option>
         <option value="6">6 px</option>
         <option value="8">8 px</option>
         <option value="12">12 px</option>
@@ -544,7 +544,7 @@ fire.setOptions({ wind: 'none', palette: ['#000', '#123', '#39f', '#cff'] })</co
           <tr><td><code>sparks</code></td><td>1</td><td>How many sparks loud hits throw off the playhead. 0 turns them off.</td></tr>
           <tr><td><code>burnTime</code>, <code>embers</code></td><td>2.5, 0.3</td><td>Progress: seconds of audio a played stretch takes to burn down, and the share of its heat the embers keep. A <code>burnTime</code> of 0 keeps it blazing.</td></tr>
           <tr><td><code>wind</code></td><td>'left'</td><td><code>'left'</code> is the original. <code>'none'</code> keeps flames above the sound that lit them.</td></tr>
-          <tr><td><code>pixelSize</code></td><td>3</td><td>Cell size in CSS pixels, 1 or more. Smaller cells make finer, shorter flames: heat climbs one cell per step.</td></tr>
+          <tr><td><code>pixelSize</code></td><td>4</td><td>Cell size in CSS pixels, 1 or more. Smaller cells make finer, shorter flames: heat climbs one cell per step.</td></tr>
           <tr><td><code>fps</code></td><td>30</td><td>Fire steps per second. The original demo ran at 20.</td></tr>
           <tr><td><code>scale</code></td><td>'db'</td><td>Loudness to heat: <code>'db'</code> or <code>'linear'</code>.</td></tr>
           <tr><td><code>dbRange</code></td><td>48 / 72</td><td>Decibels below the loudest point that still give heat (loudness / spectrum).</td></tr>
@@ -620,7 +620,7 @@ var defaults = {
   gain: 1,
   layer: "back",
   opacity: 1,
-  pixelSize: 3,
+  pixelSize: 4,
   debug: false,
   burning: true,
   fftSize: 2048
