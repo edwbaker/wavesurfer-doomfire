@@ -68,6 +68,14 @@ npm run build
 
 `npm run build` type-checks `src/doomfire.ts`, writes `dist/doomfire.esm.js` and `dist/doomfire.d.ts`, and copies the built plugin into the demo's source panel, which is the code `index.html` runs.
 
+## Release
+
+1. Bump the version with `npm version patch` (or `minor`, `major`), which commits and tags `vX.Y.Z`.
+2. Push the commit and tag: `git push --follow-tags`.
+3. Publish a GitHub release for the tag. The `Publish to npm` workflow builds the package and publishes it with provenance; it stops if the tag doesn't match the version in `package.json`.
+
+The workflow signs in with npm trusted publishing, which is set up once on npmjs.com under the package's settings: Trusted Publisher → GitHub Actions, user `edwbaker`, repository `wavesurfer-doomfire`, workflow `publish.yml`.
+
 ## Credits
 
 The fire algorithm and palette are from [doom-fire-algorithm](https://github.com/filipedeschamps/doom-fire-algorithm) by Filipe Deschamps (MIT), after [How DOOM fire was done](https://fabiensanglard.net/doom_fire_psx/) by Fabien Sanglard. MIT licence; see `LICENSE`.
