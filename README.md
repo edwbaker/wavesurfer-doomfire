@@ -44,7 +44,7 @@ fire.setOptions({ wind: 'none', palette: ['#000', '#123', '#39f', '#cff'] })
 | `sparks` | `1` | How many sparks loud hits throw off the playhead. 0 turns them off. |
 | `burnTime`, `embers` | `2.5`, `0.3` | Progress: seconds of audio a played stretch takes to burn down, and the share of its heat the embers keep. A `burnTime` of 0 keeps it blazing. |
 | `wind` | `'left'` | `'left'` is the original. `'none'` keeps flames above the sound that lit them. |
-| `pixelSize` | height / 32 | Cell size in CSS pixels. |
+| `pixelSize` | `3` | Cell size in CSS pixels, 1 or more. Smaller cells make finer, shorter flames: heat climbs one cell per step. |
 | `fps` | `30` | Fire steps per second. The original demo ran at 20. |
 | `scale` | `'db'` | Loudness to heat: `'db'` or `'linear'`. |
 | `dbRange` | `48` / `72` | Decibels below the loudest point that still give heat (loudness / spectrum). |

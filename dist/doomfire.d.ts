@@ -33,7 +33,7 @@ export type DoomFirePluginOptions = {
     blendMode?: string;
     /** CSS opacity of the fire layer. */
     opacity?: number;
-    /** Cell size in CSS pixels. Defaults to 1/32 of the waveform's height. */
+    /** Cell size in CSS pixels, 1 or more. Smaller cells make finer, shorter flames: heat climbs one cell per step. */
     pixelSize?: number;
     /** Colours from cold to hot, CSS strings or [r, g, b], stretched over the 37 heat steps. */
     palette?: readonly DoomFireColor[];

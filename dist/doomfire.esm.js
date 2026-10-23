@@ -56,6 +56,7 @@ var defaults = {
   gain: 1,
   layer: "back",
   opacity: 1,
+  pixelSize: 3,
   debug: false,
   burning: true,
   fftSize: 2048
@@ -411,7 +412,7 @@ var DoomFirePlugin = WaveSurfer.definePlugin(
       const top = waveform ? waveform.offsetTop : 0;
       const height = waveform ? waveform.offsetHeight : wrapper.clientHeight;
       if (width <= 0 || height <= 0) return false;
-      const cell = Math.max(1, Math.round(opts.pixelSize ?? Math.max(2, height / 32)));
+      const cell = Math.max(1, Math.round(opts.pixelSize ?? defaults.pixelSize));
       const newCols = Math.ceil(width / cell) + 1;
       const newRows = Math.ceil(height / cell);
       if (cell !== cellPx || newCols !== cols || newRows !== rows) {

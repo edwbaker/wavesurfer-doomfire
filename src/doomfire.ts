@@ -39,7 +39,7 @@ export type DoomFirePluginOptions = {
   blendMode?: string;
   /** CSS opacity of the fire layer. */
   opacity?: number;
-  /** Cell size in CSS pixels. Defaults to 1/32 of the waveform's height. */
+  /** Cell size in CSS pixels, 1 or more. Smaller cells make finer, shorter flames: heat climbs one cell per step. */
   pixelSize?: number;
   /** Colours from cold to hot, CSS strings or [r, g, b], stretched over the 37 heat steps. */
   palette?: readonly DoomFireColor[];
@@ -69,7 +69,7 @@ export type DoomFireApi = {
   getIntensities(): { columns: number; rows: number; data: Uint8Array };
 };
 
-type DefaultedOption = "source" | "base" | "burnTime" | "embers" | "stoke" | "sparks" | "fps" | "wind" | "scale" | "normalize" | "gain" | "layer" | "opacity" | "debug" | "burning" | "fftSize";
+type DefaultedOption = "source" | "base" | "burnTime" | "embers" | "stoke" | "sparks" | "fps" | "wind" | "scale" | "normalize" | "gain" | "layer" | "opacity" | "pixelSize" | "debug" | "burning" | "fftSize";
 type Options = Required<Pick<DoomFirePluginOptions, DefaultedOption>> & Omit<DoomFirePluginOptions, DefaultedOption>;
 type Analysis = {
   channels: Float32Array[];
@@ -147,6 +147,7 @@ const defaults: Required<Pick<DoomFirePluginOptions, DefaultedOption>> = {
   gain: 1,
   layer: "back",
   opacity: 1,
+  pixelSize: 3,
   debug: false,
   burning: true,
   fftSize: 2048,
@@ -523,7 +524,7 @@ const DoomFirePlugin: DefinedPlugin<DoomFirePluginOptions, DoomFirePluginEvents,
       const top = waveform ? waveform.offsetTop : 0;
       const height = waveform ? waveform.offsetHeight : wrapper.clientHeight;
       if (width <= 0 || height <= 0) return false;
-      const cell = Math.max(1, Math.round(opts.pixelSize ?? Math.max(2, height / 32)));
+      const cell = Math.max(1, Math.round(opts.pixelSize ?? defaults.pixelSize));
       const newCols = Math.ceil(width / cell) + 1;
       const newRows = Math.ceil(height / cell);
       if (cell !== cellPx || newCols !== cols || newRows !== rows) {
