@@ -1,0 +1,42 @@
+# Type-checks, checks the committed build output matches the source, and runs the browser tests.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Check dist/ and the demo's source panel are up to date
+        run: |
+          if [ -n "$(git status --porcelain -- dist index.html)" ]; then
+            git status --short -- dist index.html
+            git diff -- dist index.html
+            echo "::error::dist/ or index.html is out of date with src/. Run npm run build and commit the result."
+            exit 1
+          fi
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

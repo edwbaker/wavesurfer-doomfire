@@ -66,7 +66,14 @@ npm install
 npm run build
 ```
 
-`npm run build` type-checks `src/doomfire.ts`, writes `dist/doomfire.esm.js` and `dist/doomfire.d.ts`, and copies the built plugin into the demo's source panel, which is the code `index.html` runs.
+`npm run build` type-checks `src/doomfire.ts`, writes `dist/doomfire.esm.js` and `dist/doomfire.d.ts`, and copies the built plugin into the demo's source panel, which is the code `index.html` runs. Commit `dist/` and `index.html` with the source change.
+
+```sh
+npx playwright install chromium   # once
+npm test
+```
+
+`npm test` runs the browser tests in headless Chromium against the built plugin: `tests/plugin.spec.js` checks the plugin in a real wavesurfer.js (through `tests/harness.html`), and `tests/demo.spec.js` checks the demo page, which loads wavesurfer.js from jsDelivr. The CI workflow runs the type check, the tests, and a check that `dist/` and `index.html` match a fresh build, on every push to `main` and every pull request.
 
 ## Release
 
