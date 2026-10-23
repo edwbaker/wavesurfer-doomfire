@@ -1,6 +1,9 @@
-<!doctype html><html lang="en"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DoomFire for wavesurfer.js</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="A wavesurfer.js 8 plugin that runs the PlayStation DOOM fire algorithm over your waveform, lit by the audio.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -9,6 +12,10 @@
   /* Layout: one column. A black firebox up top (always dark, the fire needs it), the control console
      under it, then the palette, the algorithm and the code. Cold iron around hot fire. */
   :root {
+    color-scheme: light;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    scroll-padding-top: env(safe-area-inset-top, 0px);
     --iron: #e4e8ec;
     --plate: #f6f7f9;
     --ink: #11161b;
@@ -61,7 +68,9 @@
   }
 
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body {
+    margin: 0;
     background: var(--iron);
     color: var(--ink);
     font: 400 var(--step-0)/1.55 var(--font-body);
@@ -376,7 +385,8 @@
     * { transition: none !important; scroll-behavior: auto !important; }
   }
 </style>
-
+</head>
+<body>
 <main class="page">
   <header class="masthead">
     <p class="eyebrow">Plugin for wavesurfer.js 8</p>
@@ -1576,21 +1586,616 @@ export {
   <footer class="credits">
     <p>Fire algorithm and palette: <a href="https://github.com/filipedeschamps/doom-fire-algorithm" target="_blank" rel="noopener">doom-fire-algorithm</a> by Filipe Deschamps, MIT licence (<a href="https://github.com/filipedeschamps/doom-fire-algorithm/tree/master/playground/1st-implementation-with-tables" target="_blank" rel="noopener">1st-implementation-with-tables</a>).</p>
     <p>After <a href="https://fabiensanglard.net/doom_fire_psx/" target="_blank" rel="noopener">How DOOM fire was done</a> by Fabien Sanglard.</p>
-    <p>Waveform by <a href="https://wavesurfer.xyz" target="_blank" rel="noopener">wavesurfer.js</a> 8.0.1, BSD-3-Clause. The test tape is synthesized in your browser.</p>
+    <p>Waveform by <a href="https://wavesurfer.xyz" target="_blank" rel="noopener">wavesurfer.js</a> 8.0.3, BSD-3-Clause. The test tape is synthesized in your browser.</p>
     <p>Maintained by <a href="https://ebaker.me.uk" target="_blank" rel="noopener">Ed Baker</a>.</p>
   </footer>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@8.0.1/dist/wavesurfer.min.js" integrity="sha384-cFoZUUrlVjbDowT5/idDYja9T/OY8JaecFDFEt6O/CHQxJjjQR440T5VhilWib4U" crossorigin="anonymous"></script>
-<script>"use strict";
+<script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@8.0.3/dist/wavesurfer.min.js" integrity="sha384-BRAbmpVEFcrH2Gk0ep73NKSLj2A0JsdRTfoNj3ElEjxSbdhyASY5GBenG+tMtVO+" crossorigin="anonymous"></script>
+<script>
+"use strict";
 (() => {
-// Run the plugin from the source shown on the page, so the demo, the source panel and
-// "Copy doomfire.esm.js" can never drift apart. Without wavesurfer.js only the palette is used.
-var pluginSource = document.getElementById("plugin-source").textContent;
-var pluginBody = pluginSource.slice(0, pluginSource.lastIndexOf("export {")).replace('import WaveSurfer from "wavesurfer.js";', "");
-var { DOOM_FIRE_PALETTE, DoomFirePlugin } = new Function("WaveSurfer", '"use strict";' + pluginBody + "return { DOOM_FIRE_PALETTE, DoomFirePlugin };")(window.WaveSurfer || { definePlugin() {} });
-var Me = window.WaveSurfer, Be = DOOM_FIRE_PALETTE, rt = DoomFirePlugin;
-var xe=class{constructor(){this.context=null;this.gain=null;this.node=null;this.buffer=null;this.listeners=new Map;this.startedAt=0;this.position=0;this.rate=1;this.level=1;this.silent=!1;this.source="";this.paused=!0;this.seeking=!1;this.autoplay=!1;this.controls=!1;this.crossOrigin=null;this.preservesPitch=!0;this.error=null;this.onceWrappers=new Map}useBuffer(n){this.buffer=n}addEventListener(n,l,o){if(this.listeners.has(n)||this.listeners.set(n,new Set),typeof o=="object"&&o.once){let p=(...b)=>{this.removeEventListener(n,l),l(...b)};this.onceWrappers.set(l,p),this.listeners.get(n)?.add(p);return}this.listeners.get(n)?.add(l)}removeEventListener(n,l){let o=this.listeners.get(n);o?.delete(l);let p=this.onceWrappers.get(l);p&&(o?.delete(p),this.onceWrappers.delete(l))}emit(n){this.listeners.get(n)?.forEach(l=>l(new Event(n)))}get src(){return this.source}set src(n){if(this.stopNode(),this.paused=!0,this.position=0,this.source=n,!n){this.emit("emptied");return}queueMicrotask(()=>{this.source!==n||!this.buffer||(this.emit("loadedmetadata"),this.emit("durationchange"),this.emit("canplay"),this.emit("timeupdate"))})}get currentSrc(){return this.source}get readyState(){return this.buffer&&this.source?4:0}get duration(){return this.buffer?.duration??0}get ended(){return this.paused&&this.duration>0&&this.position>=this.duration-.01}get currentTime(){return this.paused||!this.context?this.position:Math.min(this.duration,this.position+(this.context.currentTime-this.startedAt)*this.rate)}set currentTime(n){let l=!this.paused;l&&this.stopNode(),this.position=Math.max(0,Math.min(n,this.duration)),l&&this.startNode(),this.emit("seeking"),this.emit("seeked"),this.emit("timeupdate")}get playbackRate(){return this.rate}set playbackRate(n){let l=!this.paused;l&&(this.position=this.currentTime,this.stopNode()),this.rate=n||1,l&&this.startNode(),this.emit("ratechange")}get volume(){return this.level}set volume(n){this.level=n,this.gain&&(this.gain.gain.value=this.silent?0:n),this.emit("volumechange")}get muted(){return this.silent}set muted(n){this.silent=n,this.gain&&(this.gain.gain.value=n?0:this.level),this.emit("volumechange")}async play(){if(!(!this.paused||!this.buffer)){if(!this.context){let n=navigator.audioSession;try{n&&(n.type="playback")}catch{}this.context=new AudioContext,this.gain=this.context.createGain(),this.gain.gain.value=this.silent?0:this.level,this.gain.connect(this.context.destination)}this.context.state==="suspended"&&this.context.resume().catch(()=>{}),this.position>=this.duration-.01&&(this.position=0),this.paused=!1,this.startNode(),this.emit("play"),this.emit("playing")}}pause(){this.paused||(this.position=this.currentTime,this.stopNode(),this.paused=!0,this.emit("pause"))}load(){}canPlayType(){return"maybe"}removeAttribute(n){n==="src"&&(this.src="")}remove(){this.stopNode(),this.context?.close().catch(()=>{}),this.context=null,this.listeners.clear()}startNode(){if(!this.context||!this.gain||!this.buffer)return;let n=this.context.createBufferSource();n.buffer=this.buffer,n.playbackRate.value=this.rate,n.connect(this.gain),n.onended=()=>{n===this.node&&(this.node=null,this.position=this.duration,this.paused=!0,this.emit("pause"),this.emit("ended"))},n.start(0,this.position),this.startedAt=this.context.currentTime,this.node=n}stopNode(){let n=this.node;if(this.node=null,!!n){n.onended=null;try{n.stop()}catch{}n.disconnect()}}};var st=[{start:0,end:4,label:"Sweep"},{start:5,end:11,label:"Groove"},{start:12,end:17,label:"Chirps"},{start:19.5,end:24,label:"Swell"}];async function at(e=44100){let l=new OfflineAudioContext(1,e*24,e),o=l.createGain();o.gain.value=.8,o.connect(l.destination);let p=l.createBuffer(1,e,e),b=p.getChannelData(0);for(let a=0;a<b.length;a++)b[a]=Math.random()*2-1;{let a=l.createOscillator(),m=l.createGain();a.frequency.setValueAtTime(80,0),a.frequency.exponentialRampToValueAtTime(7e3,4),m.gain.setValueAtTime(1e-4,0),m.gain.exponentialRampToValueAtTime(.9,3.7),m.gain.linearRampToValueAtTime(0,4),a.connect(m).connect(o),a.start(0),a.stop(4)}let M=60/124,y=(a,m=1)=>{let d=l.createOscillator(),k=l.createGain();d.frequency.setValueAtTime(160,a),d.frequency.exponentialRampToValueAtTime(42,a+.18),k.gain.setValueAtTime(m,a),k.gain.exponentialRampToValueAtTime(.001,a+.4),d.connect(k).connect(o),d.start(a),d.stop(a+.42)},v=(a,m,d,k,E)=>{let c=l.createBufferSource();c.buffer=p;let A=l.createBiquadFilter();A.type=k,A.frequency.value=d,A.Q.value=.9;let L=l.createGain();L.gain.setValueAtTime(E,a),L.gain.exponentialRampToValueAtTime(.001,a+m),c.connect(A).connect(L).connect(o),c.start(a,Math.random()*.5),c.stop(a+m+.02)},u=[41.2,41.2,49,41.2,55,41.2,61.7,49];for(let a=0;a*M<6-.01;a++){let m=5+a*M,d=Math.floor(a/4);y(m,a%4===0?1:.8),a%2===1&&v(m,.2,1800,"bandpass",.7),v(m,.05,8e3,"highpass",.25),v(m+M/2,.05,8e3,"highpass",.18);for(let k=0;k<2;k++){let E=u[(a*2+k+d)%u.length],c=m+k*M/2,A=l.createOscillator();A.type="sawtooth",A.frequency.value=E*2;let L=l.createBiquadFilter();L.type="lowpass",L.frequency.setValueAtTime(900,c),L.frequency.exponentialRampToValueAtTime(160,c+M/2);let z=l.createGain();z.gain.setValueAtTime(.32,c),z.gain.exponentialRampToValueAtTime(.001,c+M/2-.01),A.connect(L).connect(z).connect(o),A.start(c),A.stop(c+M/2)}}let T=(a,m,d,k)=>{let E=l.createOscillator();E.frequency.value=m;let c=l.createGain();c.gain.setValueAtTime(0,a),c.gain.linearRampToValueAtTime(k,a+d*.3),c.gain.linearRampToValueAtTime(0,a+d),E.connect(c).connect(o),E.start(a),E.stop(a+d+.01)};for(let a=0;a<9;a++){let m=12+a*.55,d=a%3===2?2300:4400,k=.35+.5*Math.sin(a/8*Math.PI);for(let E=0;E<6;E++)T(m+E*.045,d,.03,k)}{let a=[110,164.8,220,261.6,329.6,493.9],m=l.createBiquadFilter();m.type="lowpass",m.frequency.setValueAtTime(300,17.5),m.frequency.exponentialRampToValueAtTime(5e3,21),m.frequency.exponentialRampToValueAtTime(400,24);let d=l.createGain();d.gain.setValueAtTime(1e-4,17.5),d.gain.exponentialRampToValueAtTime(.5,21),d.gain.exponentialRampToValueAtTime(.002,23.9),m.connect(d).connect(o);for(let k of a)for(let E of[-7,7]){let c=l.createOscillator();c.type="sawtooth",c.frequency.value=k,c.detune.value=E,c.connect(m),c.start(17.5),c.stop(24)}}return l.startRendering()}var I=e=>document.querySelector(e),Vt=matchMedia("(prefers-reduced-motion: reduce)").matches,ft=matchMedia("(max-width: 560px)").matches,Ae=e=>`${Math.floor(e/60)}:${String(Math.floor(e%60)).padStart(2,"0")}`,Nt=I("#palette");Be.forEach(([e,n,l],o)=>{let p=document.createElement("li");p.style.setProperty("--swatch",`rgb(${e} ${n} ${l})`),p.dataset.heat=String(o),p.title=`heat ${o}: rgb(${e}, ${n}, ${l})`,p.innerHTML=`<span>${o}</span>`,Nt.appendChild(p)});document.querySelectorAll("[data-copy]").forEach(e=>{e.addEventListener("click",async()=>{let n=document.getElementById(e.dataset.copy||""),l=n?.textContent?.trim()??"",o=p=>{let b=e.dataset.label||e.textContent||"";e.dataset.label=b,e.textContent=p,setTimeout(()=>e.textContent=b,1600)};try{await navigator.clipboard.writeText(l),o("Copied")}catch{if(n instanceof HTMLElement&&n.tagName==="PRE"){n.closest("details")?.setAttribute("open","");let p=document.createRange();p.selectNodeContents(n),getSelection()?.removeAllRanges(),getSelection()?.addRange(p),o("Selected")}else o("Copy blocked here")}})});if(!Me){I("#stage-status").textContent="Couldn't load wavesurfer.js from cdn.jsdelivr.net, so the demo can't run. Check your connection or content blocker, then reload.";return}var dt=new xe,D=Me.create({container:"#waveform",height:ft?150:200,waveColor:"#46525f",progressColor:"#252d36",cursorColor:"#f6c56b",cursorWidth:2,barWidth:2,barGap:1,barRadius:1,barHeight:.6,sampleRate:22050,dragToSeek:!0,media:dt}),R=D.registerPlugin(rt.create({fps:Vt?12:30,maxFrequency:8e3})),Re=I("#play"),Ut=I("#time"),lt=I("#heat"),We=e=>{Re.textContent=e?"Pause":"Play",Re.toggleAttribute("data-playing",e)};Re.addEventListener("click",()=>D.playPause());D.on("play",()=>We(!0));D.on("pause",()=>We(!1));D.on("finish",()=>We(!1));var qe=()=>{Ut.textContent=`${Ae(D.getCurrentTime())} / ${Ae(D.getDuration())}`};D.on("timeupdate",qe);D.on("ready",qe);var pt=I("#chapters");st.forEach(({start:e,label:n})=>{let l=document.createElement("button");l.type="button",l.className="chip",l.innerHTML=`${n} <span>${Ae(e)}</span>`,l.addEventListener("click",()=>D.setTime(e)),pt.appendChild(l)});var Le="waveform",Oe=8e3,mt=()=>{let{columns:e,rows:n,data:l}=R.getIntensities();if(!e||!n)return;let o=l.subarray((n-1)*e);if(Le==="spectrum"){let u=0;for(let a=1;a<e-1;a++)o[a]>o[u]&&(u=a);let T=Oe??(D.getDecodedData()?.sampleRate??22050)/2;lt.textContent=o[u]?`Hottest band \u2248 ${((u+.5)/(e-1)*T/1e3).toFixed(1)} kHz`:"Spectrum is quiet";return}let p=R.getCanvas(),b=parseFloat(p.style.width)/e,M=D.getCurrentTime()/Math.max(D.getDuration(),.001)*D.getWrapper().clientWidth,y=Math.floor((M-parseFloat(p.style.left))/b),v=0;if(y>=0&&y<e)for(let u=0;u<n;u++)v=Math.max(v,l[u*e+y]);lt.textContent=`Heat at the playhead: ${v} / 36`};setInterval(mt,200);var me=(e,n)=>{document.querySelectorAll(`input[name="${e}"]`).forEach(l=>{l.addEventListener("change",()=>l.checked&&n(l.value))})};me("source",e=>{Le=e,R.setOptions({source:Le}),mt()});me("base",e=>R.setOptions({base:e}));me("stoke",e=>R.setOptions({stoke:Number(e),sparks:Number(e)}));me("wind",e=>R.setOptions({wind:e}));me("layer",e=>R.setOptions({layer:e}));var $e=I("#cell"),ht=I("#numbers"),gt=()=>{let e=Number($e.value);ht.checked?R.setOptions({debug:!0,pixelSize:Math.max(e??0,ft?18:22)}):R.setOptions({debug:!1,pixelSize:e})};$e.addEventListener("change",gt);ht.addEventListener("change",gt);var Ie=I("#zoom"),bt=I("#zoom-value");Ie.addEventListener("input",()=>{let e=Number(Ie.value);bt.textContent=e?`${e} px/s`:"Fit",D.getDecodedData()&&D.zoom(e)});var yt=I("#fire"),ct=I("#fire-state"),Te=e=>{yt.textContent=e==="burning"?"Extinguish":"Ignite",ct.textContent={burning:"Burning",fading:"Fuel off, fading\u2026",out:"Out"}[e],ct.dataset.state=e};yt.addEventListener("click",()=>R.isBurning()?R.extinguish():R.ignite());R.on("ignite",()=>Te("burning"));R.on("extinguish",()=>Te("fading"));R.on("burnout",()=>Te("out"));Te("burning");var ut=I("#file"),De=I("#file-status"),loadId=0,vt=async(e,n,l)=>{D.pause(),dt.useBuffer(e);try{await D.loadBlob(n,Array.from({length:e.numberOfChannels},(o,p)=>e.getChannelData(p)),e.duration)}catch(o){if(l===loadId)throw o;return!1}return l!==loadId?!1:(D.options.minPxPerSec&&D.zoom(0),Ie.value="0",bt.textContent="Fit",qe(),!0)};ut.addEventListener("change",async()=>{let e=ut.files?.[0];if(!e)return;let n=++loadId;De.textContent=`Decoding ${e.name}\u2026`;try{let l=await new OfflineAudioContext(1,1,44100).decodeAudioData(await e.arrayBuffer());if(n!==loadId)return;Oe=void 0,R.setOptions({maxFrequency:Oe});if(!await vt(l,e,n))return;pt.hidden=!0,I("#stage-status").hidden=!0,De.textContent=`${e.name} \xB7 ${Ae(l.duration)}`}catch{n===loadId&&(De.textContent=`Couldn't decode ${e.name}. Try an MP3, WAV, M4A or OGG file.`)}});(async()=>{let e=I("#stage-status"),l=++loadId;try{let n=await at(22050);l===loadId&&await vt(n,new Blob,l)&&(e.hidden=!0)}catch(n){l===loadId&&(e.textContent="This browser could not render the demo audio. Choose a file of your own below.",console.error(n))}})();})();
-</script>
+  // Run the plugin from the source shown on the page, so the demo, the source panel and
+  // "Copy doomfire.esm.js" can never drift apart. Without wavesurfer.js only the palette is used.
+  const pluginSource = document.getElementById("plugin-source").textContent;
+  const pluginBody = pluginSource.slice(0, pluginSource.lastIndexOf("export {")).replace('import WaveSurfer from "wavesurfer.js";', "");
+  const { DOOM_FIRE_PALETTE, DoomFirePlugin } = new Function("WaveSurfer", `"use strict";${pluginBody}return { DOOM_FIRE_PALETTE, DoomFirePlugin };`)(
+    window.WaveSurfer || { definePlugin() {} },
+  );
 
-</body></html>
+  // A stand-in for an <audio> element that plays an AudioBuffer through Web Audio. wavesurfer.js drives
+  // it like the real thing, so the synthesized test tape plays without being encoded first and a chosen
+  // file is decoded only once.
+  class BufferMedia {
+    context = null;
+    gain = null;
+    node = null; // the source node playing now, if any
+    buffer = null;
+    listeners = new Map();
+    onceWrappers = new Map();
+    startedAt = 0; // the context's time when the current node started
+    position = 0; // seconds into the buffer when playback last started or stopped
+    rate = 1;
+    level = 1;
+    silent = false;
+    source = "";
+    paused = true;
+    // the rest of what wavesurfer.js reads or sets on a media element
+    seeking = false;
+    autoplay = false;
+    controls = false;
+    crossOrigin = null;
+    preservesPitch = true;
+    error = null;
+
+    useBuffer(buffer) {
+      this.buffer = buffer;
+    }
+
+    addEventListener(type, listener, options) {
+      if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+      if (options?.once) {
+        const once = (...args) => {
+          this.removeEventListener(type, listener);
+          listener(...args);
+        };
+        this.onceWrappers.set(listener, once);
+        this.listeners.get(type).add(once);
+        return;
+      }
+      this.listeners.get(type).add(listener);
+    }
+
+    removeEventListener(type, listener) {
+      const listeners = this.listeners.get(type);
+      listeners?.delete(listener);
+      const once = this.onceWrappers.get(listener);
+      if (once) {
+        listeners?.delete(once);
+        this.onceWrappers.delete(listener);
+      }
+    }
+
+    emit(type) {
+      this.listeners.get(type)?.forEach((listener) => listener(new Event(type)));
+    }
+
+    get src() {
+      return this.source;
+    }
+
+    set src(url) {
+      this.stopNode();
+      this.paused = true;
+      this.position = 0;
+      this.source = url;
+      if (!url) {
+        this.emit("emptied");
+        return;
+      }
+      // report the buffer as loaded, as a media element does once it has read the file
+      queueMicrotask(() => {
+        if (this.source !== url || !this.buffer) return;
+        for (const type of ["loadedmetadata", "durationchange", "canplay", "timeupdate"]) this.emit(type);
+      });
+    }
+
+    get currentSrc() {
+      return this.source;
+    }
+
+    get readyState() {
+      return this.buffer && this.source ? 4 : 0; // HAVE_ENOUGH_DATA
+    }
+
+    get duration() {
+      return this.buffer?.duration ?? 0;
+    }
+
+    get ended() {
+      return this.paused && this.duration > 0 && this.position >= this.duration - 0.01;
+    }
+
+    get currentTime() {
+      if (this.paused || !this.context) return this.position;
+      return Math.min(this.duration, this.position + (this.context.currentTime - this.startedAt) * this.rate);
+    }
+
+    set currentTime(time) {
+      const playing = !this.paused;
+      if (playing) this.stopNode();
+      this.position = Math.max(0, Math.min(time, this.duration));
+      if (playing) this.startNode();
+      this.emit("seeking");
+      this.emit("seeked");
+      this.emit("timeupdate");
+    }
+
+    get playbackRate() {
+      return this.rate;
+    }
+
+    set playbackRate(rate) {
+      const playing = !this.paused;
+      if (playing) {
+        this.position = this.currentTime;
+        this.stopNode();
+      }
+      this.rate = rate || 1;
+      if (playing) this.startNode();
+      this.emit("ratechange");
+    }
+
+    get volume() {
+      return this.level;
+    }
+
+    set volume(level) {
+      this.level = level;
+      if (this.gain) this.gain.gain.value = this.silent ? 0 : level;
+      this.emit("volumechange");
+    }
+
+    get muted() {
+      return this.silent;
+    }
+
+    set muted(silent) {
+      this.silent = silent;
+      if (this.gain) this.gain.gain.value = silent ? 0 : this.level;
+      this.emit("volumechange");
+    }
+
+    async play() {
+      if (!this.paused || !this.buffer) return;
+      if (!this.context) {
+        // let iOS play it while the ringer is silenced, as it does for media elements
+        try {
+          if (navigator.audioSession) navigator.audioSession.type = "playback";
+        } catch {}
+        this.context = new AudioContext();
+        this.gain = this.context.createGain();
+        this.gain.gain.value = this.silent ? 0 : this.level;
+        this.gain.connect(this.context.destination);
+      }
+      if (this.context.state === "suspended") this.context.resume().catch(() => {});
+      if (this.position >= this.duration - 0.01) this.position = 0;
+      this.paused = false;
+      this.startNode();
+      this.emit("play");
+      this.emit("playing");
+    }
+
+    pause() {
+      if (this.paused) return;
+      this.position = this.currentTime;
+      this.stopNode();
+      this.paused = true;
+      this.emit("pause");
+    }
+
+    load() {}
+
+    canPlayType() {
+      return "maybe";
+    }
+
+    removeAttribute(name) {
+      if (name === "src") this.src = "";
+    }
+
+    remove() {
+      this.stopNode();
+      this.context?.close().catch(() => {});
+      this.context = null;
+      this.listeners.clear();
+    }
+
+    // A source node plays the buffer once, so each start, seek or rate change makes a new one.
+    startNode() {
+      if (!this.context || !this.gain || !this.buffer) return;
+      const node = this.context.createBufferSource();
+      node.buffer = this.buffer;
+      node.playbackRate.value = this.rate;
+      node.connect(this.gain);
+      node.onended = () => {
+        if (node !== this.node) return;
+        this.node = null;
+        this.position = this.duration;
+        this.paused = true;
+        this.emit("pause");
+        this.emit("ended");
+      };
+      node.start(0, this.position);
+      this.startedAt = this.context.currentTime;
+      this.node = node;
+    }
+
+    stopNode() {
+      const node = this.node;
+      this.node = null;
+      if (!node) return;
+      node.onended = null;
+      try {
+        node.stop();
+      } catch {}
+      node.disconnect();
+    }
+  }
+
+  // The test tape: 24 seconds synthesized offline, in four parts that each light the fire differently.
+  const CHAPTERS = [
+    { start: 0, label: "Sweep" },
+    { start: 5, label: "Groove" },
+    { start: 12, label: "Chirps" },
+    { start: 19.5, label: "Swell" },
+  ];
+
+  async function renderTestTape(rate = 44100) {
+    const ctx = new OfflineAudioContext(1, rate * 24, rate);
+    const master = ctx.createGain();
+    master.gain.value = 0.8;
+    master.connect(ctx.destination);
+
+    // a second of white noise for the drums
+    const noise = ctx.createBuffer(1, rate, rate);
+    const samples = noise.getChannelData(0);
+    for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
+
+    // Sweep, 0–4 s: a sine gliding from 80 Hz to 7 kHz as it swells
+    {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.setValueAtTime(80, 0);
+      osc.frequency.exponentialRampToValueAtTime(7000, 4);
+      gain.gain.setValueAtTime(0.0001, 0);
+      gain.gain.exponentialRampToValueAtTime(0.9, 3.7);
+      gain.gain.linearRampToValueAtTime(0, 4);
+      osc.connect(gain).connect(master);
+      osc.start(0);
+      osc.stop(4);
+    }
+
+    // Groove, 5–11 s: kick, snare, hi-hats and a sawtooth bass at 124 bpm
+    const beat = 60 / 124;
+    const kick = (time, level = 1) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.setValueAtTime(160, time);
+      osc.frequency.exponentialRampToValueAtTime(42, time + 0.18);
+      gain.gain.setValueAtTime(level, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.4);
+      osc.connect(gain).connect(master);
+      osc.start(time);
+      osc.stop(time + 0.42);
+    };
+    // a burst of filtered noise
+    const hit = (time, length, frequency, type, level) => {
+      const source = ctx.createBufferSource();
+      source.buffer = noise;
+      const filter = ctx.createBiquadFilter();
+      filter.type = type;
+      filter.frequency.value = frequency;
+      filter.Q.value = 0.9;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(level, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + length);
+      source.connect(filter).connect(gain).connect(master);
+      source.start(time, Math.random() * 0.5);
+      source.stop(time + length + 0.02);
+    };
+    const riff = [41.2, 41.2, 49, 41.2, 55, 41.2, 61.7, 49]; // E1 E1 G1 E1 A1 E1 B1 G1
+    for (let i = 0; i * beat < 6 - 0.01; i++) {
+      const time = 5 + i * beat;
+      const bar = Math.floor(i / 4);
+      kick(time, i % 4 === 0 ? 1 : 0.8);
+      if (i % 2 === 1) hit(time, 0.2, 1800, "bandpass", 0.7); // the snare, on 2 and 4
+      hit(time, 0.05, 8000, "highpass", 0.25); // hi-hats on the beat and off it
+      hit(time + beat / 2, 0.05, 8000, "highpass", 0.18);
+      // two eighth notes of bass a beat, an octave up, the riff moving on a note each bar
+      for (let half = 0; half < 2; half++) {
+        const start = time + (half * beat) / 2;
+        const osc = ctx.createOscillator();
+        osc.type = "sawtooth";
+        osc.frequency.value = riff[(i * 2 + half + bar) % riff.length] * 2;
+        const filter = ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(900, start);
+        filter.frequency.exponentialRampToValueAtTime(160, start + beat / 2);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.32, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + beat / 2 - 0.01);
+        osc.connect(filter).connect(gain).connect(master);
+        osc.start(start);
+        osc.stop(start + beat / 2);
+      }
+    }
+
+    // Chirps, 12–17 s: nine bursts of six short, high blips, rising and falling in level
+    const blip = (time, frequency, length, level) => {
+      const osc = ctx.createOscillator();
+      osc.frequency.value = frequency;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, time);
+      gain.gain.linearRampToValueAtTime(level, time + length * 0.3);
+      gain.gain.linearRampToValueAtTime(0, time + length);
+      osc.connect(gain).connect(master);
+      osc.start(time);
+      osc.stop(time + length + 0.01);
+    };
+    for (let i = 0; i < 9; i++) {
+      const time = 12 + i * 0.55;
+      const frequency = i % 3 === 2 ? 2300 : 4400;
+      const level = 0.35 + 0.5 * Math.sin((i / 8) * Math.PI);
+      for (let j = 0; j < 6; j++) blip(time + j * 0.045, frequency, 0.03, level);
+    }
+
+    // Swell, 17.5–24 s: a detuned sawtooth chord that swells and fades as its filter opens and closes
+    {
+      const chord = [110, 164.8, 220, 261.6, 329.6, 493.9]; // A2 E3 A3 C4 E4 B4
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(300, 17.5);
+      filter.frequency.exponentialRampToValueAtTime(5000, 21);
+      filter.frequency.exponentialRampToValueAtTime(400, 24);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, 17.5);
+      gain.gain.exponentialRampToValueAtTime(0.5, 21);
+      gain.gain.exponentialRampToValueAtTime(0.002, 23.9);
+      filter.connect(gain).connect(master);
+      for (const frequency of chord) {
+        for (const detune of [-7, 7]) {
+          const osc = ctx.createOscillator();
+          osc.type = "sawtooth";
+          osc.frequency.value = frequency;
+          osc.detune.value = detune;
+          osc.connect(filter);
+          osc.start(17.5);
+          osc.stop(24);
+        }
+      }
+    }
+
+    return ctx.startRendering();
+  }
+
+  const $ = (selector) => document.querySelector(selector);
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const narrow = matchMedia("(max-width: 560px)").matches;
+  const formatTime = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
+
+  // the palette strip, one swatch per heat
+  DOOM_FIRE_PALETTE.forEach(([r, g, b], heat) => {
+    const swatch = document.createElement("li");
+    swatch.style.setProperty("--swatch", `rgb(${r} ${g} ${b})`);
+    swatch.dataset.heat = String(heat);
+    swatch.title = `heat ${heat}: rgb(${r}, ${g}, ${b})`;
+    swatch.innerHTML = `<span>${heat}</span>`;
+    $("#palette").appendChild(swatch);
+  });
+
+  // Copy buttons copy the text of the element their data-copy names. Where the clipboard is blocked,
+  // they select a code block instead, so it can be copied by hand.
+  document.querySelectorAll("[data-copy]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const target = document.getElementById(button.dataset.copy || "");
+      const text = target?.textContent?.trim() ?? "";
+      const flash = (message) => {
+        const label = button.dataset.label || button.textContent || "";
+        button.dataset.label = label;
+        button.textContent = message;
+        setTimeout(() => (button.textContent = label), 1600);
+      };
+      try {
+        await navigator.clipboard.writeText(text);
+        flash("Copied");
+      } catch {
+        if (target instanceof HTMLElement && target.tagName === "PRE") {
+          target.closest("details")?.setAttribute("open", "");
+          const range = document.createRange();
+          range.selectNodeContents(target);
+          getSelection()?.removeAllRanges();
+          getSelection()?.addRange(range);
+          flash("Selected");
+        } else {
+          flash("Copy blocked here");
+        }
+      }
+    });
+  });
+
+  const stageStatus = $("#stage-status");
+  const WaveSurfer = window.WaveSurfer;
+  if (!WaveSurfer) {
+    stageStatus.textContent = "Couldn't load wavesurfer.js from cdn.jsdelivr.net, so the demo can't run. Check your connection or content blocker, then reload.";
+    return;
+  }
+
+  const media = new BufferMedia();
+  const ws = WaveSurfer.create({
+    container: "#waveform",
+    height: narrow ? 150 : 200,
+    waveColor: "#46525f",
+    progressColor: "#252d36",
+    cursorColor: "#f6c56b",
+    cursorWidth: 2,
+    barWidth: 2,
+    barGap: 1,
+    barRadius: 1,
+    barHeight: 0.6,
+    sampleRate: 22050,
+    dragToSeek: true,
+    media,
+  });
+  // The spectrum spans 0–8 kHz for the test tape, where its sounds are, and up to half the sample rate
+  // (the plugin's default) for a chosen file.
+  let maxFrequency = 8000;
+  const fire = ws.registerPlugin(DoomFirePlugin.create({ fps: reducedMotion ? 12 : 30, maxFrequency }));
+
+  const playButton = $("#play");
+  const showPlaying = (playing) => {
+    playButton.textContent = playing ? "Pause" : "Play";
+    playButton.toggleAttribute("data-playing", playing);
+  };
+  playButton.addEventListener("click", () => ws.playPause());
+  ws.on("play", () => showPlaying(true));
+  ws.on("pause", () => showPlaying(false));
+  ws.on("finish", () => showPlaying(false));
+
+  const timeLabel = $("#time");
+  const showTime = () => {
+    timeLabel.textContent = `${formatTime(ws.getCurrentTime())} / ${formatTime(ws.getDuration())}`;
+  };
+  ws.on("timeupdate", showTime);
+  ws.on("ready", showTime);
+
+  // chapter buttons that jump to each part of the test tape
+  const chapters = $("#chapters");
+  for (const { start, label } of CHAPTERS) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "chip";
+    chip.innerHTML = `${label} <span>${formatTime(start)}</span>`;
+    chip.addEventListener("click", () => ws.setTime(start));
+    chapters.appendChild(chip);
+  }
+
+  // The readout under the waveform: the hottest cell in the playhead's column, or for the spectrum
+  // source, the band burning hottest along the bottom row.
+  const heatLabel = $("#heat");
+  let source = "waveform";
+  const showHeat = () => {
+    const { columns, rows, data } = fire.getIntensities();
+    if (!columns || !rows) return;
+    const bottom = data.subarray((rows - 1) * columns);
+    if (source === "spectrum") {
+      let hottest = 0;
+      for (let c = 1; c < columns - 1; c++) if (bottom[c] > bottom[hottest]) hottest = c;
+      const topFrequency = maxFrequency ?? (ws.getDecodedData()?.sampleRate ?? 22050) / 2;
+      const kHz = (((hottest + 0.5) / (columns - 1)) * topFrequency) / 1000;
+      heatLabel.textContent = bottom[hottest] ? `Hottest band ≈ ${kHz.toFixed(1)} kHz` : "Spectrum is quiet";
+      return;
+    }
+    const canvas = fire.getCanvas();
+    const cellWidth = parseFloat(canvas.style.width) / columns;
+    const playheadX = (ws.getCurrentTime() / Math.max(ws.getDuration(), 0.001)) * ws.getWrapper().clientWidth;
+    const column = Math.floor((playheadX - parseFloat(canvas.style.left)) / cellWidth);
+    let heat = 0;
+    if (column >= 0 && column < columns) {
+      for (let r = 0; r < rows; r++) heat = Math.max(heat, data[r * columns + column]);
+    }
+    heatLabel.textContent = `Heat at the playhead: ${heat} / 36`;
+  };
+  setInterval(showHeat, 200);
+
+  // the radio groups, each setting one option
+  const onRadio = (name, apply) => {
+    document.querySelectorAll(`input[name="${name}"]`).forEach((input) => {
+      input.addEventListener("change", () => {
+        if (input.checked) apply(input.value);
+      });
+    });
+  };
+  onRadio("source", (value) => {
+    source = value;
+    fire.setOptions({ source });
+    showHeat();
+  });
+  onRadio("base", (base) => fire.setOptions({ base }));
+  onRadio("stoke", (value) => fire.setOptions({ stoke: Number(value), sparks: Number(value) }));
+  onRadio("wind", (wind) => fire.setOptions({ wind }));
+  onRadio("layer", (layer) => fire.setOptions({ layer }));
+
+  // cell size, and the grid of heat numbers, which needs cells big enough to print them in
+  const cellSize = $("#cell");
+  const numbers = $("#numbers");
+  const setCells = () => {
+    const pixelSize = Number(cellSize.value);
+    if (numbers.checked) fire.setOptions({ debug: true, pixelSize: Math.max(pixelSize, narrow ? 18 : 22) });
+    else fire.setOptions({ debug: false, pixelSize });
+  };
+  cellSize.addEventListener("change", setCells);
+  numbers.addEventListener("change", setCells);
+
+  const zoom = $("#zoom");
+  const zoomLabel = $("#zoom-value");
+  zoom.addEventListener("input", () => {
+    const pxPerSec = Number(zoom.value);
+    zoomLabel.textContent = pxPerSec ? `${pxPerSec} px/s` : "Fit";
+    if (ws.getDecodedData()) ws.zoom(pxPerSec);
+  });
+
+  const fireButton = $("#fire");
+  const fireState = $("#fire-state");
+  const showFireState = (state) => {
+    fireButton.textContent = state === "burning" ? "Extinguish" : "Ignite";
+    fireState.textContent = { burning: "Burning", fading: "Fuel off, fading…", out: "Out" }[state];
+    fireState.dataset.state = state;
+  };
+  fireButton.addEventListener("click", () => (fire.isBurning() ? fire.extinguish() : fire.ignite()));
+  fire.on("ignite", () => showFireState("burning"));
+  fire.on("extinguish", () => showFireState("fading"));
+  fire.on("burnout", () => showFireState("out"));
+  showFireState("burning");
+
+  // Each load takes the next loadId. A load that a newer one overtakes gives up rather than overwrite it.
+  let loadId = 0;
+  // Loads decoded audio into the player and resolves true, or false if a newer load overtook it.
+  const loadBuffer = async (buffer, blob, id) => {
+    ws.pause();
+    media.useBuffer(buffer);
+    try {
+      // with the samples and duration given, wavesurfer.js draws them without decoding the blob again
+      const channels = Array.from({ length: buffer.numberOfChannels }, (_, ch) => buffer.getChannelData(ch));
+      await ws.loadBlob(blob, channels, buffer.duration);
+    } catch (error) {
+      if (id === loadId) throw error;
+      return false;
+    }
+    if (id !== loadId) return false;
+    // new audio starts zoomed out to fit
+    if (ws.options.minPxPerSec) ws.zoom(0);
+    zoom.value = "0";
+    zoomLabel.textContent = "Fit";
+    showTime();
+    return true;
+  };
+
+  const fileInput = $("#file");
+  const fileStatus = $("#file-status");
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+    const id = ++loadId;
+    fileStatus.textContent = `Decoding ${file.name}…`;
+    try {
+      const buffer = await new OfflineAudioContext(1, 1, 44100).decodeAudioData(await file.arrayBuffer());
+      if (id !== loadId) return;
+      maxFrequency = undefined;
+      fire.setOptions({ maxFrequency });
+      if (!(await loadBuffer(buffer, file, id))) return;
+      chapters.hidden = true; // they're the test tape's
+      stageStatus.hidden = true;
+      fileStatus.textContent = `${file.name} · ${formatTime(buffer.duration)}`;
+    } catch {
+      if (id === loadId) fileStatus.textContent = `Couldn't decode ${file.name}. Try an MP3, WAV, M4A or OGG file.`;
+    }
+  });
+
+  // start with the test tape, rendered at the waveform's sample rate
+  (async () => {
+    const id = ++loadId;
+    try {
+      const tape = await renderTestTape(22050);
+      if (id === loadId && (await loadBuffer(tape, new Blob(), id))) stageStatus.hidden = true;
+    } catch (error) {
+      if (id === loadId) {
+        stageStatus.textContent = "This browser could not render the demo audio. Choose a file of your own below.";
+        console.error(error);
+      }
+    }
+  })();
+})();
+</script>
+</body>
+</html>
