@@ -1,6 +1,6 @@
 {
   "name": "wavesurfer-doomfire",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A wavesurfer.js 8 plugin that runs the PlayStation DOOM fire over your waveform, lit by the audio.",
   "keywords": [
     "wavesurfer",
