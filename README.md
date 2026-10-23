@@ -10,7 +10,17 @@ A [wavesurfer.js](https://wavesurfer.xyz) 8 plugin that runs the PlayStation DOO
 npm install wavesurfer-doomfire wavesurfer.js
 ```
 
-It needs wavesurfer.js 8, where plugins are built with `WaveSurfer.definePlugin`. Without a bundler, copy `dist/doomfire.esm.js` next to your code and map `wavesurfer.js` to its ES module build with an import map.
+It needs wavesurfer.js 8, where plugins are built with `WaveSurfer.definePlugin`.
+
+Or with a script tag, after wavesurfer.js's own, both from the audioBLAST! CDN:
+
+```html
+<script src="https://cdn.audioblast.org/wavesurfer/8.0.3/wavesurfer.min.js"></script>
+<script src="https://cdn.audioblast.org/wavesurfer-doomfire/0.2.0/doomfire.min.js"></script>
+<!-- WaveSurfer.DoomFire is now defined -->
+```
+
+The script-tag build, `dist/doomfire.min.js`, carries no copy of wavesurfer.js: it takes the page's `WaveSurfer` and attaches itself to it as `WaveSurfer.DoomFire`. With CommonJS or AMD it requires `wavesurfer.js` instead.
 
 ## Use
 
@@ -32,6 +42,13 @@ ws.on('finish', () => fire.extinguish()) // the fuel goes cold, the flames die a
 ws.on('play', () => fire.ignite())
 fire.on('burnout', () => console.log('the fire is out'))
 fire.setOptions({ wind: 'none', palette: ['#000', '#123', '#39f', '#cff'] })
+```
+
+With the script tags, the plugin is `WaveSurfer.DoomFire`:
+
+```js
+const ws = WaveSurfer.create({ container: '#waveform', url: '/audio/recording.mp3', barHeight: 0.6 })
+const fire = ws.registerPlugin(WaveSurfer.DoomFire.create({ source: 'progress' }))
 ```
 
 ## Options
@@ -57,7 +74,7 @@ fire.setOptions({ wind: 'none', palette: ['#000', '#123', '#39f', '#cff'] })
 | `burning` | `true` | Start lit. |
 | `fftSize`, `maxFrequency` | `2048`, Nyquist | Spectrum source settings. |
 
-Methods: `ignite()`, `extinguish()`, `isBurning()`, `setOptions()`, `getCanvas()`, `getIntensities()`. Events: `ignite`, `extinguish`, `burnout`. The layer is a `::part(doomfire)` you can style. The package also exports `DOOM_FIRE_PALETTE` and `stepFire`, one step of the fire on a grid of your own.
+Methods: `ignite()`, `extinguish()`, `isBurning()`, `setOptions()`, `getCanvas()`, `getIntensities()`. Events: `ignite`, `extinguish`, `burnout`. The layer is a `::part(doomfire)` you can style. The package also exports `DOOM_FIRE_PALETTE` and `stepFire`, one step of the fire on a grid of your own; the script-tag build has them as `WaveSurfer.DoomFire.DOOM_FIRE_PALETTE` and `WaveSurfer.DoomFire.stepFire`.
 
 ## Develop
 
@@ -66,14 +83,14 @@ npm install
 npm run build
 ```
 
-`npm run build` type-checks `src/doomfire.ts`, writes `dist/doomfire.esm.js` and `dist/doomfire.d.ts`, and copies the built plugin into the demo's source panel, which is the code `index.html` runs. Commit `dist/` and `index.html` with the source change.
+`npm run build` type-checks `src/doomfire.ts`, writes `dist/doomfire.esm.js`, `dist/doomfire.d.ts` and the script-tag build `dist/doomfire.min.js`, and copies the ES module into the demo's source panel, which is the code `index.html` runs. Commit `dist/` and `index.html` with the source change.
 
 ```sh
 npx playwright install chromium   # once
 npm test
 ```
 
-`npm test` runs the browser tests in headless Chromium against the built plugin: `tests/plugin.spec.js` checks the plugin in a real wavesurfer.js (through `tests/harness.html`), and `tests/demo.spec.js` checks the demo page, which loads wavesurfer.js from cdn.audioblast.org. The CI workflow runs the type check, the tests, and a check that `dist/` and `index.html` match a fresh build, on every push to `main` and every pull request.
+`npm test` runs the browser tests in headless Chromium against the built plugin: `tests/plugin.spec.js` checks the plugin in a real wavesurfer.js (through `tests/harness.html`), `tests/umd.spec.js` checks the script-tag build (through `tests/umd.html`), and `tests/demo.spec.js` checks the demo page, which loads wavesurfer.js from cdn.audioblast.org. The CI workflow runs the type check, the tests, and a check that `dist/` and `index.html` match a fresh build, on every push to `main` and every pull request.
 
 ## Release
 
@@ -81,6 +98,7 @@ npm test
 2. Push the commit and tag: `git push --follow-tags`.
 3. Publish a GitHub release for the tag. The `Publish to npm` workflow builds the package and stages it on npm with provenance; it stops if the tag doesn't match the version in `package.json`.
 4. Approve the staged version with 2FA to publish it: `npm stage list wavesurfer-doomfire`, then `npm stage approve <stage-id>`, or approve it on npmjs.com.
+5. Put the script-tag build on the audioBLAST! CDN: copy `dist/doomfire.min.js` and `LICENSE` into `wavesurfer-doomfire/X.Y.Z/` in [cdn.audioblast.org](https://github.com/audioblast/cdn.audioblast.org), and update the version in the script-tag example above.
 
 The workflow signs in with npm trusted publishing, which is set up once on npmjs.com under the package's settings: Trusted Publisher → GitHub Actions, user `edwbaker`, repository `wavesurfer-doomfire`, workflow `publish.yml`, with the `npm stage publish` permission. The workflow can also be run by hand from the Actions tab to stage the version on `main` again.
 

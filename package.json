@@ -29,8 +29,12 @@
     ".": {
       "types": "./dist/doomfire.d.ts",
       "import": "./dist/doomfire.esm.js"
-    }
+    },
+    "./umd": "./dist/doomfire.min.js",
+    "./package.json": "./package.json"
   },
+  "unpkg": "./dist/doomfire.min.js",
+  "jsdelivr": "./dist/doomfire.min.js",
   "files": [
     "dist"
   ],
