@@ -12,6 +12,14 @@
     "doom",
     "fire"
   ],
+  "homepage": "https://ebaker.me.uk/wavesurfer-doomfire/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edwbaker/wavesurfer-doomfire.git"
+  },
+  "bugs": {
+    "url": "https://github.com/edwbaker/wavesurfer-doomfire/issues"
+  },
   "license": "MIT",
   "author": "Ed Baker <ed@ebaker.me.uk>",
   "type": "module",

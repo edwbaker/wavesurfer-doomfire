@@ -2,7 +2,7 @@
 
 A [wavesurfer.js](https://wavesurfer.xyz) 8 plugin that runs the PlayStation DOOM fire over your waveform, lit by the audio. The drawn bars are the fuel: every bar burns as hot as it is loud and the flames climb off its top. Press play and the music stokes it, blazing and throwing sparks at the playhead.
 
-Open `index.html` for a demo with every option.
+[Try the demo](https://ebaker.me.uk/wavesurfer-doomfire/), which has every option (the same page as `index.html`).
 
 ## Install
 
