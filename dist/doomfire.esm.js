@@ -54,7 +54,7 @@ var defaults = {
   scale: "db",
   normalize: true,
   gain: 1,
-  layer: "front",
+  layer: "back",
   opacity: 1,
   debug: false,
   burning: true,

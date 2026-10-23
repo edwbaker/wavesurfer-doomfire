@@ -422,8 +422,8 @@
     <fieldset>
       <legend>Layer</legend>
       <div class="segmented">
-        <label><input type="radio" name="layer" id="layer-front" value="front" checked><span>In front</span></label>
-        <label><input type="radio" name="layer" id="layer-back" value="back"><span>Behind</span></label>
+        <label><input type="radio" name="layer" id="layer-front" value="front"><span>In front</span></label>
+        <label><input type="radio" name="layer" id="layer-back" value="back" checked><span>Behind</span></label>
       </div>
     </fieldset>
     <fieldset>
@@ -549,8 +549,8 @@ fire.setOptions({ wind: 'none', palette: ['#000', '#123', '#39f', '#cff'] })</co
           <tr><td><code>dbRange</code></td><td>48 / 72</td><td>Decibels below the loudest point that still give heat (loudness / spectrum).</td></tr>
           <tr><td><code>normalize</code></td><td>true</td><td>Measure against the loudest point in the file.</td></tr>
           <tr><td><code>gain</code></td><td>1</td><td>Heat multiplier.</td></tr>
-          <tr><td><code>layer</code></td><td>'front'</td><td><code>'front'</code> (screen-blended over the waveform) or <code>'back'</code>.</td></tr>
-          <tr><td><code>blendMode</code>, <code>opacity</code></td><td>'screen', 1</td><td>CSS blending of the fire layer.</td></tr>
+          <tr><td><code>layer</code></td><td>'back'</td><td><code>'back'</code> (behind the waveform) or <code>'front'</code> (screen-blended over it).</td></tr>
+          <tr><td><code>blendMode</code>, <code>opacity</code></td><td>'normal', 1</td><td>CSS blending of the fire layer. <code>blendMode</code> defaults to <code>'screen'</code> with <code>layer: 'front'</code>.</td></tr>
           <tr><td><code>palette</code></td><td>fire.js</td><td>Colours from cold to hot, stretched over 37 steps.</td></tr>
           <tr><td><code>debug</code></td><td>false</td><td>Print each cell's heat. Use a <code>pixelSize</code> of 14 or more.</td></tr>
           <tr><td><code>burning</code></td><td>true</td><td>Start lit.</td></tr>
@@ -617,7 +617,7 @@ var defaults = {
   scale: "db",
   normalize: true,
   gain: 1,
-  layer: "front",
+  layer: "back",
   opacity: 1,
   debug: false,
   burning: true,

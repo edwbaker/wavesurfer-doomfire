@@ -33,9 +33,9 @@ export type DoomFirePluginOptions = {
   normalize?: boolean;
   /** Heat multiplier. */
   gain?: number;
-  /** 'front': screen-blended over the waveform. 'back': behind it. */
+  /** 'back': behind the waveform. 'front': screen-blended over it. */
   layer?: "front" | "back";
-  /** CSS mix-blend-mode of the fire layer. */
+  /** CSS mix-blend-mode of the fire layer: 'normal' behind the waveform and 'screen' in front unless set. */
   blendMode?: string;
   /** CSS opacity of the fire layer. */
   opacity?: number;
@@ -145,7 +145,7 @@ const defaults: Required<Pick<DoomFirePluginOptions, DefaultedOption>> = {
   scale: "db",
   normalize: true,
   gain: 1,
-  layer: "front",
+  layer: "back",
   opacity: 1,
   debug: false,
   burning: true,

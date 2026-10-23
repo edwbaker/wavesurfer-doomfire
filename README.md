@@ -50,8 +50,8 @@ fire.setOptions({ wind: 'none', palette: ['#000', '#123', '#39f', '#cff'] })
 | `dbRange` | `48` / `72` | Decibels below the loudest point that still give heat (loudness / spectrum). |
 | `normalize` | `true` | Measure against the loudest point in the file. |
 | `gain` | `1` | Heat multiplier. |
-| `layer` | `'front'` | `'front'` (screen-blended over the waveform) or `'back'`. |
-| `blendMode`, `opacity` | `'screen'`, `1` | CSS blending of the fire layer. |
+| `layer` | `'back'` | `'back'` (behind the waveform) or `'front'` (screen-blended over it). |
+| `blendMode`, `opacity` | `'normal'`, `1` | CSS blending of the fire layer. `blendMode` defaults to `'screen'` with `layer: 'front'`. |
 | `palette` | fire.js | Colours from cold to hot, CSS strings or `[r, g, b]`, stretched over 37 steps. |
 | `debug` | `false` | Print each cell's heat. Use a `pixelSize` of 14 or more. |
 | `burning` | `true` | Start lit. |
