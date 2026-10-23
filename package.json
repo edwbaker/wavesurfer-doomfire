@@ -1,0 +1,43 @@
+{
+  "name": "wavesurfer-doomfire",
+  "version": "0.1.0",
+  "description": "A wavesurfer.js 8 plugin that runs the PlayStation DOOM fire over your waveform, lit by the audio.",
+  "keywords": [
+    "wavesurfer",
+    "wavesurfer.js",
+    "wavesurfer-plugin",
+    "waveform",
+    "audio",
+    "visualization",
+    "doom",
+    "fire"
+  ],
+  "license": "MIT",
+  "author": "Ed Baker <ed@ebaker.me.uk>",
+  "type": "module",
+  "main": "./dist/doomfire.esm.js",
+  "types": "./dist/doomfire.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/doomfire.d.ts",
+      "import": "./dist/doomfire.esm.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "wavesurfer.js": "^8.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "wavesurfer.js": "^8.0.3"
+  }
+}

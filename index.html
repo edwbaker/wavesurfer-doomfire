@@ -1,0 +1,1593 @@
+<!doctype html><html lang="en"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>DoomFire for wavesurfer.js</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="A wavesurfer.js 8 plugin that runs the PlayStation DOOM fire algorithm over your waveform, lit by the audio.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Layout: one column. A black firebox up top (always dark, the fire needs it), the control console
+     under it, then the palette, the algorithm and the code. Cold iron around hot fire. */
+  :root {
+    --iron: #e4e8ec;
+    --plate: #f6f7f9;
+    --ink: #11161b;
+    --ash: #55606c;
+    --seam: #c5ccd4;
+    --ember: #b4420b;
+    --ember-ink: #ffffff;
+    --focus: #1f6feb;
+    --firebox: #070707;
+    --firebox-ink: #ece5d9;
+    --firebox-dim: #9a9187;
+    --firebox-seam: #2a2522;
+    --firebox-edge: #070707;
+    --hot: #f6c56b;
+    --font-display: 'Barlow Condensed', Impact, 'Arial Narrow', sans-serif;
+    --font-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --step--1: 0.8125rem;
+    --step-0: 1rem;
+    --step-1: 1.25rem;
+    --step-2: 1.75rem;
+    --step-4: clamp(3.25rem, 11vw, 6.5rem);
+    --radius: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --iron: #0b0e12;
+      --plate: #131920;
+      --ink: #e6eaee;
+      --ash: #95a1ae;
+      --seam: #28313b;
+      --ember: #f0791c;
+      --ember-ink: #170a02;
+      --focus: #6aa8ff;
+      --firebox-edge: #262f39;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --iron: #0b0e12;
+    --plate: #131920;
+    --ink: #e6eaee;
+    --ash: #95a1ae;
+    --seam: #28313b;
+    --ember: #f0791c;
+    --ember-ink: #170a02;
+    --focus: #6aa8ff;
+    --firebox-edge: #262f39;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--iron);
+    color: var(--ink);
+    font: 400 var(--step-0)/1.55 var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding-block: 28px 56px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid;
+    gap: 28px;
+  }
+  a { color: var(--ember); text-underline-offset: 2px; }
+  a:hover { text-decoration-thickness: 2px; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  h2 {
+    font: 800 var(--step-2)/1.05 var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  h3 { font: 600 var(--step-0)/1.3 var(--font-body); }
+  p { margin: 0; }
+  section > p, .lede { max-width: 65ch; }
+
+  /* Masthead */
+  .masthead { display: grid; gap: 10px; }
+  .eyebrow {
+    font: 600 var(--step--1)/1 var(--font-mono);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ash);
+  }
+  h1 {
+    font: 800 var(--step-4)/0.86 var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+  }
+  .lede { font-size: var(--step-1); line-height: 1.45; color: var(--ink); }
+
+  /* Firebox */
+  .firebox {
+    background: var(--firebox);
+    color: var(--firebox-ink);
+    border: 1px solid var(--firebox-edge);
+    border-radius: var(--radius);
+    padding: 14px 0 10px;
+    display: grid;
+    gap: 10px;
+    position: relative;
+    min-width: 0;
+    color-scheme: dark;
+  }
+  /* min-width: 0 stops the grid stretching to a zoomed waveform's full width, which made the zoom flicker */
+  #waveform { margin: 0 14px; min-height: 150px; min-width: 0; }
+  .stage-status {
+    position: absolute;
+    inset: 14px 14px auto;
+    height: 150px;
+    display: grid;
+    place-items: center;
+    font: 400 var(--step--1)/1.4 var(--font-mono);
+    color: var(--firebox-dim);
+    pointer-events: none;
+  }
+  .transport {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    padding: 0 14px;
+    font: 400 var(--step--1)/1.3 var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--firebox-dim);
+  }
+  .play {
+    font: 600 var(--step-0)/1 var(--font-body);
+    min-width: 92px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 0;
+    background: var(--hot);
+    color: #1a1006;
+    cursor: pointer;
+  }
+  .play[data-playing] { background: var(--firebox-ink); }
+  .time { color: var(--firebox-ink); }
+  .heat { margin-left: auto; }
+  .chapters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 2px 14px 4px;
+    border-top: 1px solid var(--firebox-seam);
+    padding-top: 10px;
+  }
+  .chip {
+    font: 500 var(--step--1)/1 var(--font-body);
+    color: var(--firebox-ink);
+    background: transparent;
+    border: 1px solid var(--firebox-seam);
+    border-radius: 999px;
+    padding: 7px 11px;
+    cursor: pointer;
+  }
+  .chip span { color: var(--firebox-dim); font-family: var(--font-mono); margin-left: 4px; }
+  .chip:hover { border-color: var(--firebox-dim); }
+
+  /* Console */
+  .console {
+    background: var(--plate);
+    border: 1px solid var(--seam);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px 20px;
+    align-items: start;
+  }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 6px; }
+  legend, .field-label {
+    font: 600 var(--step--1)/1 var(--font-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ash);
+    padding: 0;
+    margin-bottom: 6px;
+  }
+  .segmented {
+    display: flex;
+    border: 1px solid var(--seam);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--iron);
+  }
+  .segmented label { flex: 1; position: relative; }
+  .segmented input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .segmented span {
+    display: block;
+    text-align: center;
+    padding: 9px 6px;
+    font: 500 var(--step--1)/1.1 var(--font-body);
+    color: var(--ash);
+    border-left: 1px solid var(--seam);
+  }
+  .segmented label:first-child span { border-left: 0; }
+  .segmented input:checked + span { background: var(--ink); color: var(--plate); }
+  .segmented input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: -3px; }
+  .field { display: grid; gap: 6px; min-width: 0; }
+  .field-row { display: flex; align-items: center; gap: 10px; }
+  select, input[type="range"] { accent-color: var(--ember); }
+  select {
+    font: 500 var(--step--1)/1.2 var(--font-body);
+    color: var(--ink);
+    background: var(--iron);
+    border: 1px solid var(--seam);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+    width: 100%;
+  }
+  input[type="range"] { flex: 1; min-width: 0; }
+  output { font: 400 var(--step--1)/1 var(--font-mono); color: var(--ash); min-width: 64px; text-align: right; font-variant-numeric: tabular-nums; }
+  .switch { display: flex; align-items: center; gap: 10px; font-size: var(--step--1); cursor: pointer; padding-top: 4px; }
+  .switch input { width: 18px; height: 18px; accent-color: var(--ember); margin: 0; }
+  .burn { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .primary {
+    font: 600 var(--step-0)/1 var(--font-body);
+    padding: 11px 18px;
+    border-radius: var(--radius);
+    border: 0;
+    background: var(--ember);
+    color: var(--ember-ink);
+    cursor: pointer;
+    min-width: 120px;
+  }
+  .fire-state { font: 400 var(--step--1)/1.3 var(--font-mono); color: var(--ash); }
+  .fire-state[data-state="burning"]::before,
+  .fire-state[data-state="fading"]::before,
+  .fire-state[data-state="out"]::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 7px;
+    vertical-align: 1px;
+    background: var(--seam);
+  }
+  .fire-state[data-state="burning"]::before { background: var(--ember); }
+  .fire-state[data-state="fading"]::before { background: var(--ember); opacity: 0.45; }
+  .own-audio { display: grid; gap: 6px; grid-column: 1 / -1; padding-top: 14px; border-top: 1px solid var(--seam); }
+  .file-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+  .file {
+    position: relative;
+    font: 600 var(--step--1)/1 var(--font-body);
+    padding: 10px 14px;
+    border: 1px solid var(--ink);
+    border-radius: var(--radius);
+    cursor: pointer;
+  }
+  .file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+  .file:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+  #file-status { font-size: var(--step--1); color: var(--ash); overflow-wrap: anywhere; min-width: 0; }
+
+  /* Palette strip */
+  .palette-section { display: grid; gap: 10px; }
+  .palette {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(37, minmax(0, 1fr));
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--seam);
+  }
+  .palette li {
+    background: var(--swatch);
+    height: 56px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 5px;
+  }
+  .palette span {
+    font: 600 10px/1 var(--font-mono);
+    color: rgb(255 255 255 / 0.75);
+    font-variant-numeric: tabular-nums;
+  }
+  .palette li:nth-child(n + 26) span { color: rgb(0 0 0 / 0.65); }
+  .palette-scale { display: flex; justify-content: space-between; font: 400 var(--step--1)/1 var(--font-mono); color: var(--ash); }
+
+  /* How it burns */
+  .how { display: grid; gap: 16px; }
+  .steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    counter-reset: step;
+  }
+  .steps li { display: grid; gap: 6px; align-content: start; counter-increment: step; padding-top: 12px; border-top: 2px solid var(--ink); }
+  .steps h3::before {
+    content: counter(step) '  ';
+    font-family: var(--font-mono);
+    color: var(--ember);
+    white-space: pre;
+  }
+  .steps p { color: var(--ash); font-size: 0.9375rem; }
+  .code {
+    margin: 0;
+    background: var(--plate);
+    border: 1px solid var(--seam);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    font: 400 0.8125rem/1.6 var(--font-mono);
+    overflow-x: auto;
+    min-width: 0;
+    tab-size: 2;
+  }
+  .code .c { color: var(--ash); }
+  .code .k { color: var(--ember); }
+
+  /* Use it */
+  .use { display: grid; gap: 14px; min-width: 0; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ghost {
+    font: 600 var(--step--1)/1 var(--font-body);
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    border: 1px solid var(--ink);
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--seam); border-radius: var(--radius); background: var(--plate); }
+  table { border-collapse: collapse; width: 100%; font-size: 0.875rem; min-width: 560px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--seam); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  th { font: 600 var(--step--1)/1.2 var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase; color: var(--ash); }
+  td code, p code, li code { font-family: var(--font-mono); font-size: 0.8125rem; }
+  td:first-child code { color: var(--ember); white-space: nowrap; }
+  td:nth-child(2) { color: var(--ash); white-space: nowrap; font-family: var(--font-mono); font-size: 0.8125rem; }
+  details { border: 1px solid var(--seam); border-radius: var(--radius); background: var(--plate); }
+  summary { cursor: pointer; padding: 12px 14px; font: 600 var(--step--1)/1.2 var(--font-mono); }
+  details .code { border: 0; border-top: 1px solid var(--seam); border-radius: 0 0 var(--radius) var(--radius); max-height: 30rem; }
+
+  .credits {
+    border-top: 1px solid var(--seam);
+    padding-top: 18px;
+    display: grid;
+    gap: 6px;
+    font-size: 0.875rem;
+    color: var(--ash);
+  }
+
+  @media (max-width: 560px) {
+    .page { gap: 22px; padding-block: 18px 40px; }
+    .palette li { height: 44px; }
+    .palette span { display: none; }
+    .palette li:nth-child(6n + 1) span { display: inline; font-size: 9px; }
+    .heat { margin-left: 0; width: 100%; }
+  }
+  @media (forced-colors: active) {
+    .segmented input:checked + span { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; scroll-behavior: auto !important; }
+  }
+</style>
+
+<main class="page">
+  <header class="masthead">
+    <p class="eyebrow">Plugin for wavesurfer.js 8</p>
+    <h1>DoomFire</h1>
+    <p class="lede">The PlayStation DOOM fire, lit by your audio. The waveform is the fuel: every bar burns as hot as it is loud and the flames climb off its top. Press Play and the music stokes it, blazing and throwing sparks at the playhead.</p>
+  </header>
+
+  <section class="firebox" aria-label="Waveform on fire">
+    <div id="waveform"></div>
+    <p id="stage-status" class="stage-status" role="status">Rendering the test tape…</p>
+    <div class="transport">
+      <button id="play" class="play" type="button">Play</button>
+      <span id="time" class="time">0:00 / 0:00</span>
+      <span id="heat" class="heat" aria-live="off"></span>
+    </div>
+    <div id="chapters" class="chapters" aria-label="Jump to a part of the test tape"></div>
+  </section>
+
+  <section class="console" aria-label="Fire controls">
+    <fieldset>
+      <legend>Source</legend>
+      <div class="segmented">
+        <label><input type="radio" name="source" id="source-waveform" value="waveform" checked><span>Waveform</span></label>
+        <label><input type="radio" name="source" id="source-progress" value="progress"><span>Progress</span></label>
+        <label><input type="radio" name="source" id="source-spectrum" value="spectrum"><span>Spectrum</span></label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Fuel</legend>
+      <div class="segmented">
+        <label><input type="radio" name="base" id="base-waveform" value="waveform" checked><span>Waveform</span></label>
+        <label><input type="radio" name="base" id="base-bottom" value="bottom"><span>Bottom row</span></label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Wind</legend>
+      <div class="segmented">
+        <label><input type="radio" name="wind" id="wind-left" value="left" checked><span>Left</span></label>
+        <label><input type="radio" name="wind" id="wind-none" value="none"><span>Still</span></label>
+        <label><input type="radio" name="wind" id="wind-right" value="right"><span>Right</span></label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Layer</legend>
+      <div class="segmented">
+        <label><input type="radio" name="layer" id="layer-front" value="front" checked><span>In front</span></label>
+        <label><input type="radio" name="layer" id="layer-back" value="back"><span>Behind</span></label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Play stokes the fire</legend>
+      <div class="segmented">
+        <label><input type="radio" name="stoke" id="stoke-off" value="0"><span>Off</span></label>
+        <label><input type="radio" name="stoke" id="stoke-on" value="1" checked><span>On</span></label>
+        <label><input type="radio" name="stoke" id="stoke-wild" value="2"><span>Wild</span></label>
+      </div>
+    </fieldset>
+    <div class="field">
+      <label class="field-label" for="cell">Cell size</label>
+      <select id="cell">
+        <option value="auto" selected>Auto (1/32 of the height)</option>
+        <option value="3">3 px</option>
+        <option value="4">4 px</option>
+        <option value="6">6 px</option>
+        <option value="8">8 px</option>
+        <option value="12">12 px</option>
+        <option value="16">16 px</option>
+        <option value="24">24 px</option>
+      </select>
+    </div>
+    <div class="field">
+      <label class="field-label" for="zoom">Zoom</label>
+      <div class="field-row">
+        <input id="zoom" type="range" min="0" max="400" step="10" value="0">
+        <output id="zoom-value" for="zoom">Fit</output>
+      </div>
+    </div>
+    <div class="field">
+      <span class="field-label">Fire</span>
+      <div class="burn">
+        <button id="fire" class="primary" type="button">Extinguish</button>
+        <span id="fire-state" class="fire-state" data-state="burning" aria-live="polite">Burning</span>
+      </div>
+      <label class="switch"><input id="numbers" type="checkbox"> Show each cell's heat</label>
+    </div>
+    <div class="own-audio">
+      <span class="field-label">Your own audio</span>
+      <div class="file-row">
+        <label class="file">Choose a file<input id="file" type="file" accept="audio/*"></label>
+        <span id="file-status" role="status">Decoded and played in this browser. Nothing is uploaded.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="palette-section" aria-labelledby="palette-title">
+    <h2 id="palette-title">37 steps of heat</h2>
+    <p>The palette from fire.js. Heat 0 is drawn see-through so the waveform shows; 36 is white-hot. A custom palette of any length is stretched over the same 37 steps.</p>
+    <ol id="palette" class="palette" aria-label="Fire palette, heat 0 to 36"></ol>
+    <div class="palette-scale" aria-hidden="true"><span>0 · cold</span><span>36 · white-hot</span></div>
+  </section>
+
+  <section class="how" aria-labelledby="how-title">
+    <h2 id="how-title">How it burns</h2>
+    <ol class="steps">
+      <li>
+        <h3>Fuel</h3>
+        <p>Every frame, the cells inside each bar of the waveform are set alight, as hot as that slice is loud on a 48&nbsp;dB scale and hottest along the middle. In Progress a bar only catches when the playhead reaches it, then burns down to embers. Bottom row puts the fuel along the floor as in the original; Spectrum always burns from there.</p>
+      </li>
+      <li>
+        <h3>Stoke</h3>
+        <p>At rest the fire smoulders at half heat. While it plays, the sound under the playhead stokes it: the whole fire rises and falls with the music, the bars at the playhead burn white-hot, a taller column of fuel makes the flames there leap, and loud hits throw sparks. Pause and it settles back.</p>
+      </li>
+      <li>
+        <h3>Spread</h3>
+        <p>Every cell above the fuel takes the heat of the cell below, subtracts a random 0, 1 or 2 (never below zero) and writes the result that many cells to the left. Heat cools as it climbs off the bars and leans with the wind.</p>
+      </li>
+      <li>
+        <h3>Paint</h3>
+        <p>Each heat picks its colour from the palette. Turn the fuel off and nothing feeds the flames: the fire dies away in a second or two.</p>
+      </li>
+    </ol>
+<pre class="code"><code><span class="c">// one step of the fire, row by row from the top; the fuel is lit again after every step</span>
+<span class="k">for</span> (let row = 0; row &lt; height - 1; row++) {
+  <span class="k">for</span> (let col = 0; col &lt; width; col++) {
+    const decay = Math.floor(Math.random() * 3)       <span class="c">// 0, 1 or 2</span>
+    const heat = fire[(row + 1) * width + col] - decay  <span class="c">// the cell below, cooled</span>
+    const dst = col - decay                             <span class="c">// pushed left by the same amount</span>
+    <span class="k">if</span> (dst &gt;= 0) fire[row * width + dst] = Math.max(heat, 0)
+  }
+}</code></pre>
+  </section>
+
+  <section class="use" aria-labelledby="use-title">
+    <h2 id="use-title">Use it</h2>
+    <p>Drop <code>doomfire.esm.js</code> next to your code. It needs wavesurfer.js 8, where plugins are built with <code>WaveSurfer.definePlugin</code>.</p>
+<pre id="usage" class="code"><code>import WaveSurfer from 'wavesurfer.js'
+import DoomFirePlugin from './doomfire.esm.js'
+
+const ws = WaveSurfer.create({
+  container: '#waveform',
+  url: '/audio/recording.mp3',
+  barHeight: 0.6,    <span class="c">// leaves the flames room above the loudest bars</span>
+  sampleRate: 22050, <span class="c">// the spectrum source only sees up to half this</span>
+})
+
+<span class="c">// the playhead is a fuse: bars catch as they play, then burn down to embers</span>
+const fire = ws.registerPlugin(DoomFirePlugin.create({ source: 'progress', burnTime: 2.5 }))
+
+ws.on('finish', () =&gt; fire.extinguish())  <span class="c">// the fuel goes cold, the flames die away</span>
+ws.on('play', () =&gt; fire.ignite())
+fire.on('burnout', () =&gt; console.log('the fire is out'))
+fire.setOptions({ wind: 'none', palette: ['#000', '#123', '#39f', '#cff'] })</code></pre>
+    <div class="buttons">
+      <button class="ghost" type="button" data-copy="usage">Copy example</button>
+      <button class="ghost" type="button" data-copy="plugin-source">Copy doomfire.esm.js</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Option</th><th>Default</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>source</code></td><td>'waveform'</td><td><code>'waveform'</code>, <code>'progress'</code>, <code>'spectrum'</code>, or <code>(time, column) =&gt; 0…1</code> to light columns yourself, from regions or annotations for example.</td></tr>
+          <tr><td><code>base</code></td><td>'waveform'</td><td><code>'waveform'</code>: the drawn bars are the fuel (follows <code>barHeight</code>, <code>barAlign</code>, <code>normalize</code> and <code>splitChannels</code>). <code>'bottom'</code>: the original's row of fuel along the floor.</td></tr>
+          <tr><td><code>stoke</code></td><td>1</td><td>How hard playback stokes the fire. 0 keeps a steady full blaze whether or not it plays, though sparks still fly unless <code>sparks</code> is 0; 2 is wilder.</td></tr>
+          <tr><td><code>sparks</code></td><td>1</td><td>How many sparks loud hits throw off the playhead. 0 turns them off.</td></tr>
+          <tr><td><code>burnTime</code>, <code>embers</code></td><td>2.5, 0.3</td><td>Progress: seconds of audio a played stretch takes to burn down, and the share of its heat the embers keep. A <code>burnTime</code> of 0 keeps it blazing.</td></tr>
+          <tr><td><code>wind</code></td><td>'left'</td><td><code>'left'</code> is the original. <code>'none'</code> keeps flames above the sound that lit them.</td></tr>
+          <tr><td><code>pixelSize</code></td><td>height / 32</td><td>Cell size in CSS pixels.</td></tr>
+          <tr><td><code>fps</code></td><td>30</td><td>Fire steps per second. The original demo ran at 20.</td></tr>
+          <tr><td><code>scale</code></td><td>'db'</td><td>Loudness to heat: <code>'db'</code> or <code>'linear'</code>.</td></tr>
+          <tr><td><code>dbRange</code></td><td>48 / 72</td><td>Decibels below the loudest point that still give heat (loudness / spectrum).</td></tr>
+          <tr><td><code>normalize</code></td><td>true</td><td>Measure against the loudest point in the file.</td></tr>
+          <tr><td><code>gain</code></td><td>1</td><td>Heat multiplier.</td></tr>
+          <tr><td><code>layer</code></td><td>'front'</td><td><code>'front'</code> (screen-blended over the waveform) or <code>'back'</code>.</td></tr>
+          <tr><td><code>blendMode</code>, <code>opacity</code></td><td>'screen', 1</td><td>CSS blending of the fire layer.</td></tr>
+          <tr><td><code>palette</code></td><td>fire.js</td><td>Colours from cold to hot, stretched over 37 steps.</td></tr>
+          <tr><td><code>debug</code></td><td>false</td><td>Print each cell's heat. Use a <code>pixelSize</code> of 14 or more.</td></tr>
+          <tr><td><code>burning</code></td><td>true</td><td>Start lit.</td></tr>
+          <tr><td><code>fftSize</code>, <code>maxFrequency</code></td><td>2048, Nyquist</td><td>Spectrum source settings.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Methods: <code>ignite()</code>, <code>extinguish()</code>, <code>isBurning()</code>, <code>setOptions()</code>, <code>getCanvas()</code>, <code>getIntensities()</code>. Events: <code>ignite</code>, <code>extinguish</code>, <code>burnout</code>. The layer is a <code>::part(doomfire)</code> you can style.</p>
+    <details id="source-details">
+      <summary>doomfire.esm.js</summary>
+<pre id="plugin-source" class="code">/*! DoomFire plugin for wavesurfer.js v8 — fire algorithm &amp; palette from doom-fire-algorithm by Filipe Deschamps (MIT) */
+
+
+// src/doomfire.ts
+import WaveSurfer from "wavesurfer.js";
+var DOOM_FIRE_PALETTE = [
+  [7, 7, 7],
+  [31, 7, 7],
+  [47, 15, 7],
+  [71, 15, 7],
+  [87, 23, 7],
+  [103, 31, 7],
+  [119, 31, 7],
+  [143, 39, 7],
+  [159, 47, 7],
+  [175, 63, 7],
+  [191, 71, 7],
+  [199, 71, 7],
+  [223, 79, 7],
+  [223, 87, 7],
+  [223, 87, 7],
+  [215, 95, 7],
+  [215, 95, 7],
+  [215, 103, 15],
+  [207, 111, 15],
+  [207, 119, 15],
+  [207, 127, 15],
+  [207, 135, 23],
+  [199, 135, 23],
+  [199, 143, 23],
+  [199, 151, 31],
+  [191, 159, 31],
+  [191, 159, 31],
+  [191, 167, 39],
+  [191, 167, 39],
+  [191, 175, 47],
+  [183, 175, 47],
+  [183, 183, 47],
+  [183, 183, 55],
+  [207, 207, 111],
+  [223, 223, 159],
+  [239, 239, 199],
+  [255, 255, 255]
+];
+var defaults = {
+  source: "waveform",
+  base: "waveform",
+  burnTime: 2.5,
+  embers: 0.3,
+  stoke: 1,
+  sparks: 1,
+  fps: 30,
+  wind: "left",
+  scale: "db",
+  normalize: true,
+  gain: 1,
+  layer: "front",
+  opacity: 1,
+  debug: false,
+  burning: true,
+  fftSize: 2048
+};
+var numericOptions = /* @__PURE__ */ new Set(["burnTime", "embers", "stoke", "sparks", "fps", "gain", "opacity", "fftSize", "pixelSize", "dbRange", "maxFrequency"]);
+var finiteNumber = (value) =&gt; {
+  const number = typeof value === "string" &amp;&amp; value.trim() !== "" ? Number(value) : value;
+  return typeof number === "number" &amp;&amp; Number.isFinite(number) ? number : void 0;
+};
+function stepFire(fire, width, height, wind = "left", random = Math.random, reverse = false) {
+  for (let row = 0; row &lt; height - 1; row++) {
+    const rowStart = row * width;
+    const below = rowStart + width;
+    if (wind === "left") {
+      for (let col = 0; col &lt; width; col++) {
+        const decay = random() * 3 | 0;
+        const value = fire[below + col] - decay;
+        const dst = col - decay;
+        if (dst &gt;= 0) fire[rowStart + dst] = value &gt; 0 ? value : 0;
+      }
+    } else if (wind === "right") {
+      for (let col = width - 1; col &gt;= 0; col--) {
+        const decay = random() * 3 | 0;
+        const value = fire[below + col] - decay;
+        const dst = col + decay;
+        if (dst &lt; width) fire[rowStart + dst] = value &gt; 0 ? value : 0;
+      }
+    } else {
+      for (let i = 0; i &lt; width; i++) {
+        const col = reverse ? width - 1 - i : i;
+        const decay = random() * 3 | 0;
+        const value = fire[below + col] - decay;
+        const dst = col + (random() * 3 | 0) - 1;
+        if (dst &gt;= 0 &amp;&amp; dst &lt; width) fire[rowStart + dst] = value &gt; 0 ? value : 0;
+      }
+    }
+  }
+}
+function shiftRows(array, width, k, empty = 0) {
+  for (let s = 0; s &lt; array.length; s += width) {
+    if (k &gt; 0) {
+      array.copyWithin(s, s + k, s + width);
+      array.fill(empty, s + width - k, s + width);
+    } else {
+      array.copyWithin(s - k, s, s + width + k);
+      array.fill(empty, s, s - k);
+    }
+  }
+}
+var littleEndian = new Uint8Array(new Uint32Array([1]).buffer)[0] === 1;
+function packRGBA(r, g, b, a) {
+  return littleEndian ? (a &lt;&lt; 24 | b &lt;&lt; 16 | g &lt;&lt; 8 | r) &gt;&gt;&gt; 0 : (r &lt;&lt; 24 | g &lt;&lt; 16 | b &lt;&lt; 8 | a) &gt;&gt;&gt; 0;
+}
+var toByte = (v) =&gt; v &gt; 0 ? v &lt; 255 ? Math.round(v) : 255 : 0;
+var colorProbe = null;
+function toRGB(color) {
+  if (typeof color !== "string") return color;
+  if (!colorProbe) {
+    const probe = document.createElement("canvas");
+    probe.width = probe.height = 1;
+    colorProbe = probe.getContext("2d", { willReadFrequently: true });
+    if (!colorProbe) return [0, 0, 0];
+  }
+  colorProbe.clearRect(0, 0, 1, 1);
+  colorProbe.fillStyle = "#000";
+  colorProbe.fillStyle = color;
+  colorProbe.fillRect(0, 0, 1, 1);
+  const [r, g, b] = colorProbe.getImageData(0, 0, 1, 1).data;
+  return [r, g, b];
+}
+var MAX_HEAT = 36;
+function buildPalette(colors) {
+  const list = colors &amp;&amp; colors.length ? colors : DOOM_FIRE_PALETTE;
+  const stops = (list.length === 1 ? [list[0], list[0]] : list).map(toRGB);
+  const packed = new Uint32Array(MAX_HEAT + 1);
+  const css = [];
+  for (let i = 0; i &lt;= MAX_HEAT; i++) {
+    const x = i / MAX_HEAT * (stops.length - 1);
+    const k = Math.min(stops.length - 2, Math.floor(x));
+    const f = x - k;
+    const [r, g, b] = [0, 1, 2].map((ch) =&gt; toByte(stops[k][ch] + (stops[k + 1][ch] - stops[k][ch]) * f));
+    const alpha = i === 0 ? 0 : Math.min(1, i / 4);
+    packed[i] = packRGBA(r, g, b, Math.round(alpha * 255));
+    css.push(`rgba(${r},${g},${b},${alpha})`);
+  }
+  return { packed, css };
+}
+function createFFT(n) {
+  const bits = Math.round(Math.log2(n));
+  const reversed = new Uint32Array(n);
+  for (let i = 0; i &lt; n; i++) {
+    let x = i;
+    let r = 0;
+    for (let b = 0; b &lt; bits; b++) {
+      r = r &lt;&lt; 1 | x &amp; 1;
+      x &gt;&gt;= 1;
+    }
+    reversed[i] = r;
+  }
+  const cos = new Float64Array(n &gt;&gt; 1);
+  const sin = new Float64Array(n &gt;&gt; 1);
+  for (let i = 0; i &lt; n &gt;&gt; 1; i++) {
+    cos[i] = Math.cos(2 * Math.PI * i / n);
+    sin[i] = -Math.sin(2 * Math.PI * i / n);
+  }
+  return (re, im) =&gt; {
+    for (let i = 0; i &lt; n; i++) {
+      const j = reversed[i];
+      if (j &gt; i) {
+        let t = re[i];
+        re[i] = re[j];
+        re[j] = t;
+        t = im[i];
+        im[i] = im[j];
+        im[j] = t;
+      }
+    }
+    for (let size = 2; size &lt;= n; size &lt;&lt;= 1) {
+      const half = size &gt;&gt; 1;
+      const stride = n / size;
+      for (let start = 0; start &lt; n; start += size) {
+        for (let k = 0; k &lt; half; k++) {
+          const wr = cos[k * stride];
+          const wi = sin[k * stride];
+          const a = start + k;
+          const b = a + half;
+          const tr = re[b] * wr - im[b] * wi;
+          const ti = re[b] * wi + im[b] * wr;
+          re[b] = re[a] - tr;
+          im[b] = im[a] - ti;
+          re[a] += tr;
+          im[a] += ti;
+        }
+      }
+    }
+  };
+}
+var BLOCK = 256;
+function scanPeak(channels, from, to, max) {
+  for (const data of channels) {
+    for (let i = from; i &lt; to; i++) {
+      const v = data[i];
+      if (v &gt; max) max = v;
+      else if (-v &gt; max) max = -v;
+    }
+  }
+  return max;
+}
+function analyseAudio(buffer) {
+  const channels = [];
+  for (let ch = 0; ch &lt; buffer.numberOfChannels; ch++) channels.push(buffer.getChannelData(ch));
+  const length = buffer.length;
+  const count = Math.ceil(length / BLOCK);
+  const blocks = new Float32Array(count);
+  const channelBlocks = channels.map((data) =&gt; {
+    const own = new Float32Array(count);
+    for (let b = 0, i = 0; b &lt; count; b++) {
+      let max = 0;
+      const end = Math.min(length, i + BLOCK);
+      for (; i &lt; end; i++) {
+        const v = data[i];
+        if (v &gt; max) max = v;
+        else if (-v &gt; max) max = -v;
+      }
+      own[b] = max;
+      if (max &gt; blocks[b]) blocks[b] = max;
+    }
+    return own;
+  });
+  const peakOf = (values) =&gt; {
+    let peak = 0;
+    for (let b = 0; b &lt; values.length; b++) if (values[b] &gt; peak) peak = values[b];
+    return peak;
+  };
+  return {
+    channels,
+    length,
+    // samples per second of the buffer as wavesurfer sees it (pre-decoded peaks have their own)
+    rate: buffer.duration &gt; 0 ? length / buffer.duration : 0,
+    blocks,
+    channelBlocks,
+    peak: peakOf(blocks),
+    channelPeaks: channelBlocks.map(peakOf)
+  };
+}
+var clamp01 = (x) =&gt; x &gt; 0 ? x &lt; 1 ? x : 1 : 0;
+var DoomFirePlugin = WaveSurfer.definePlugin(
+  "DoomFirePlugin",
+  (ctx, options) =&gt; {
+    const withDefaults = (current, next) =&gt; {
+      const merged = { ...current };
+      for (const [key, value] of Object.entries(next || {})) {
+        if (value == null || !numericOptions.has(key)) {
+          merged[key] = value === void 0 &amp;&amp; key in defaults ? defaults[key] : value;
+          continue;
+        }
+        const number = finiteNumber(value);
+        if (number !== void 0) merged[key] = number;
+      }
+      return merged;
+    };
+    let opts = withDefaults({ ...defaults }, options);
+    let palette = buildPalette(opts.palette);
+    let burning = opts.burning;
+    let burntOut = !burning;
+    const layer = document.createElement("div");
+    layer.setAttribute("part", "doomfire");
+    Object.assign(layer.style, {
+      position: "absolute",
+      left: "0",
+      top: "0",
+      width: "100%",
+      height: "100%",
+      overflow: "hidden",
+      pointerEvents: "none"
+    });
+    const canvas = document.createElement("canvas");
+    canvas.setAttribute("part", "doomfire-canvas");
+    Object.assign(canvas.style, {
+      position: "absolute",
+      display: "block",
+      top: "auto",
+      // the shadow DOM stylesheet pins canvases to the top
+      bottom: "0",
+      left: "0",
+      imageRendering: "pixelated",
+      pointerEvents: "none"
+    });
+    layer.appendChild(canvas);
+    const g = canvas.getContext("2d");
+    const mount = () =&gt; {
+      const wrapper = ctx.wavesurfer.getWrapper();
+      const back = opts.layer === "back";
+      layer.style.zIndex = back ? "0" : "3";
+      layer.style.mixBlendMode = opts.blendMode ?? (back ? "normal" : "screen");
+      layer.style.opacity = String(opts.opacity);
+      if (back) wrapper.prepend(layer);
+      else wrapper.appendChild(layer);
+    };
+    mount();
+    ctx.scope.add(() =&gt; layer.remove());
+    let cellPx = 0;
+    let cols = 0;
+    let rows = 0;
+    let padL = 0;
+    let padR = 0;
+    let simW = 0;
+    let fire = new Uint8Array(0);
+    let heat = new Float32Array(0);
+    let colTime = new Float64Array(0);
+    let colSpan = 0;
+    let originPx = 0;
+    let canvasLeft = -1;
+    let image = null;
+    let pixels = new Uint32Array(0);
+    let dpr = 1;
+    let viewW = 0;
+    let viewH = 0;
+    let viewTop = -1;
+    let totalW = -1;
+    let duration = -1;
+    let heatDirty = true;
+    let heatShift = 0;
+    let redraw = true;
+    let reverse = false;
+    let lanes = [];
+    let laneCount = 0;
+    let perPx = 0;
+    let fuelTop = new Int16Array(0);
+    let fuelBottom = new Int16Array(0);
+    let fuelCore = new Int16Array(0);
+    let levels = new Uint8Array(0);
+    const burnsWaveform = () =&gt; opts.base === "waveform" &amp;&amp; opts.source !== "spectrum";
+    let stokeLevel = 0;
+    let slowLevel = 0;
+    let stokeCol = -1;
+    let sparkBudget = 0;
+    let pulse = 1;
+    let pulseLevel = 0;
+    let sparks = [];
+    let audio = null;
+    const loadAudio = () =&gt; {
+      const buffer = ctx.wavesurfer.getDecodedData();
+      audio = buffer &amp;&amp; buffer.length ? analyseAudio(buffer) : null;
+      heatDirty = true;
+      spectrumKey = "";
+    };
+    const windPadding = () =&gt; {
+      const reach = Math.min(rows * 2, MAX_HEAT) + 1;
+      if (opts.wind === "left") return [0, reach];
+      if (opts.wind === "right") return [reach, 0];
+      const wobble = Math.min(rows, MAX_HEAT) + 1;
+      return [wobble, wobble];
+    };
+    const resizeBacking = () =&gt; {
+      if (!cols || !rows) return;
+      if (opts.debug) {
+        dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(cols * cellPx * dpr);
+        canvas.height = Math.round(rows * cellPx * dpr);
+        image = null;
+      } else {
+        canvas.width = cols;
+        canvas.height = rows;
+        image = g.createImageData(cols, rows);
+        pixels = new Uint32Array(image.data.buffer);
+      }
+      redraw = true;
+    };
+    const regrid = (cell, newCols, newRows) =&gt; {
+      const oldW = simW;
+      const oldPadL = padL;
+      const oldRows = rows;
+      const oldCell = cellPx;
+      const old = fire;
+      cellPx = cell;
+      cols = newCols;
+      rows = newRows;
+      [padL, padR] = windPadding();
+      simW = padL + cols + padR;
+      fire = new Uint8Array(simW * rows);
+      if (old.length &amp;&amp; oldCell === cell) {
+        const keep = Math.min(oldRows, rows);
+        for (let r = 1; r &lt;= keep; r++) {
+          const src = (oldRows - r) * oldW;
+          const dst = (rows - r) * simW;
+          for (let c = 0; c &lt; simW; c++) {
+            const from = c - padL + oldPadL;
+            if (from &gt;= 0 &amp;&amp; from &lt; oldW) fire[dst + c] = old[src + from];
+          }
+        }
+      }
+      heat = new Float32Array(simW);
+      colTime = new Float64Array(simW);
+      sparks = [];
+      canvas.style.width = `${cols * cell}px`;
+      canvas.style.height = `${rows * cell}px`;
+      resizeBacking();
+      heatDirty = true;
+      spectrumKey = "";
+    };
+    const shiftColumns = (k) =&gt; {
+      for (const spark of sparks) spark.x -= k;
+      if (k &gt;= simW || -k &gt;= simW) fire.fill(0);
+      else shiftRows(fire, simW, k);
+    };
+    const syncLayout = () =&gt; {
+      const ws = ctx.wavesurfer;
+      const wrapper = ws.getWrapper();
+      const contentW = wrapper.clientWidth;
+      const width = Math.min(ws.getWidth(), contentW);
+      const waveform = wrapper.querySelector("[part=canvases]");
+      const top = waveform ? waveform.offsetTop : 0;
+      const height = waveform ? waveform.offsetHeight : wrapper.clientHeight;
+      if (width &lt;= 0 || height &lt;= 0) return false;
+      const cell = Math.max(1, Math.round(opts.pixelSize ?? Math.max(2, height / 32)));
+      const newCols = Math.ceil(width / cell) + 1;
+      const newRows = Math.ceil(height / cell);
+      if (cell !== cellPx || newCols !== cols || newRows !== rows) {
+        regrid(cell, newCols, newRows);
+      } else {
+        const [l, r] = windPadding();
+        if (l !== padL || r !== padR) regrid(cell, newCols, newRows);
+      }
+      const scroll = Math.min(ws.getScroll(), Math.max(0, contentW - width));
+      const origin = Math.floor(scroll / cell) * cell;
+      if (origin !== originPx) {
+        const k = (origin - originPx) / cell;
+        if (opts.source === "spectrum") {
+          heatDirty = true;
+        } else {
+          shiftColumns(k);
+          heatShift += k;
+        }
+        originPx = origin;
+        redraw = true;
+      }
+      if (origin !== canvasLeft) {
+        canvasLeft = origin;
+        canvas.style.left = `${origin}px`;
+      }
+      const d = ws.getDuration();
+      const dur = Number.isFinite(d) &amp;&amp; d &gt; 0 ? d : 0;
+      if (top !== viewTop || height !== viewH) {
+        layer.style.top = `${top}px`;
+        layer.style.height = `${height}px`;
+      }
+      if (contentW !== totalW || dur !== duration || height !== viewH || top !== viewTop) {
+        totalW = contentW;
+        duration = dur;
+        viewH = height;
+        viewTop = top;
+        heatDirty = true;
+      }
+      viewW = width;
+      return true;
+    };
+    const peakBetween = (a, from, to, channel = -1) =&gt; {
+      let s0 = Math.floor(from);
+      let s1 = Math.ceil(to);
+      if (s0 &lt; 0) s0 = 0;
+      if (s1 &gt; a.length) s1 = a.length;
+      if (s1 &lt;= s0) {
+        if (s0 &gt;= a.length) return 0;
+        s1 = s0 + 1;
+      }
+      let max = 0;
+      const channels = channel &lt; 0 ? a.channels : [a.channels[channel]];
+      const blocks = channel &lt; 0 ? a.blocks : a.channelBlocks[channel];
+      const firstBlock = Math.ceil(s0 / BLOCK);
+      const endBlock = Math.floor(s1 / BLOCK);
+      if (endBlock - firstBlock &gt;= 2) {
+        for (let b = firstBlock; b &lt; endBlock; b++) if (blocks[b] &gt; max) max = blocks[b];
+        max = scanPeak(channels, s0, firstBlock * BLOCK, max);
+        max = scanPeak(channels, endBlock * BLOCK, s1, max);
+      } else {
+        max = scanPeak(channels, s0, s1, max);
+      }
+      return max;
+    };
+    const loudnessToHeat = (amplitude, a) =&gt; {
+      const level = opts.normalize &amp;&amp; a.peak &gt; 0 ? amplitude / a.peak : amplitude;
+      if (opts.scale === "db") return level &gt; 0 ? clamp01(1 + 20 * Math.log10(level) / (opts.dbRange ?? 48)) : 0;
+      return clamp01(level);
+    };
+    const computeLanes = (a) =&gt; {
+      const wsOptions = ctx.wavesurfer.options;
+      const ratio = Math.max(1, window.devicePixelRatio || 1);
+      const lane = (o, topChannel, bottomChannel) =&gt; {
+        const peak = o.maxPeak || Math.max(a.channelPeaks[topChannel] ?? 0, a.channelPeaks[bottomChannel] ?? 0);
+        const scale = (o.barHeight || 1) / (o.normalize &amp;&amp; peak &gt; 0 ? peak : 1);
+        const bars = Boolean(o.barWidth || o.barGap || o.barAlign);
+        const barWidth = o.barWidth || 1 / ratio;
+        const pitch = bars ? barWidth + (o.barGap || (o.barWidth ? barWidth / 2 : 0)) : 0;
+        return { topChannel, bottomChannel, scale, align: o.barAlign, pitch, minHeight: bars ? o.barMinHeight || 0 : 0 };
+      };
+      const split = wsOptions.splitChannels;
+      const bands = split ? a.channels.map((_, ch) =&gt; ({ overlay: ch &gt; 0 &amp;&amp; Boolean(split[ch]?.overlay), ...lane({ ...wsOptions, ...split[ch] }, ch, ch) })) : [lane(wsOptions, 0, a.channels.length &gt; 1 ? 1 : 0)];
+      const boxes = ctx.wavesurfer.getWrapper().querySelector("[part=canvases]")?.children;
+      if (boxes &amp;&amp; boxes.length === bands.length) {
+        return bands.map((band, i) =&gt; {
+          const box = boxes[i];
+          return { top: box.offsetTop - viewTop, height: box.offsetHeight, ...band };
+        });
+      }
+      let stacked = 0;
+      const slots = bands.map((band) =&gt; "overlay" in band &amp;&amp; band.overlay ? Math.max(0, stacked - 1) : stacked++);
+      const height = viewH / Math.max(1, stacked);
+      return bands.map((band, i) =&gt; ({ top: slots[i] * height, height, ...band }));
+    };
+    const sampleAt = (x, pitch) =&gt; pitch ? Math.ceil((Math.ceil(x / pitch) - 0.5) * pitch * perPx) : x * perPx;
+    const computeColumns = (from, to) =&gt; {
+      const a = audio;
+      if (!laneCount) {
+        if (opts.source !== "waveform" &amp;&amp; opts.source !== "progress") return;
+        for (let c = from; c &lt; to; c++) {
+          const s0 = (originPx + (c - padL) * cellPx) * perPx;
+          const s1 = s0 + cellPx * perPx;
+          heat[c] = a &amp;&amp; perPx &gt; 0 &amp;&amp; s1 &gt; 0 &amp;&amp; s0 &lt; a.length ? loudnessToHeat(peakBetween(a, s0, s1), a) : 0;
+        }
+        return;
+      }
+      if (!a) return;
+      const rowAt = (y) =&gt; Math.min(rows - 1, Math.max(0, rows - Math.ceil((viewH - y) / cellPx)));
+      lanes.forEach((lane, l) =&gt; {
+        const half = lane.height / 2;
+        for (let c = from; c &lt; to; c++) {
+          const x0 = originPx + (c - padL) * cellPx;
+          const s0 = sampleAt(x0, lane.pitch);
+          const s1 = sampleAt(x0 + cellPx, lane.pitch);
+          if (s1 &lt;= s0 || s1 &lt;= 0 || s0 &gt;= a.length) continue;
+          const topPeak = peakBetween(a, s0, s1, lane.topChannel);
+          const bottomPeak = lane.bottomChannel === lane.topChannel ? topPeak : peakBetween(a, s0, s1, lane.bottomChannel);
+          heat[l * simW + c] = loudnessToHeat(topPeak &gt; bottomPeak ? topPeak : bottomPeak, a);
+          let up = topPeak * half * lane.scale;
+          let down = bottomPeak * half * lane.scale;
+          if (up + down &lt; lane.minHeight) {
+            if (lane.align) down = lane.minHeight - up;
+            else up = down = lane.minHeight / 2;
+          }
+          let y0 = lane.top + half - up;
+          let y1 = lane.top + half + down;
+          if (lane.align === "top") {
+            y0 = lane.top;
+            y1 = lane.top + up + down;
+          } else if (lane.align === "bottom") {
+            y1 = lane.top + lane.height;
+            y0 = y1 - up - down;
+          }
+          y0 = Math.max(y0, lane.top);
+          y1 = Math.min(y1, lane.top + lane.height);
+          if (y1 - y0 &lt; 1) continue;
+          fuelTop[l * simW + c] = rowAt(y0);
+          fuelBottom[l * simW + c] = rowAt(y1 - 0.01);
+          const core = lane.align === "top" ? lane.top : lane.align === "bottom" ? lane.top + lane.height : lane.top + half;
+          fuelCore[l * simW + c] = rowAt(Math.min(Math.max(core, y0), y1 - 0.01));
+        }
+      });
+    };
+    const setColumnTimes = () =&gt; {
+      const secPerPx = totalW &gt; 0 ? duration / totalW : 0;
+      colSpan = cellPx * secPerPx;
+      for (let c = 0; c &lt; simW; c++) colTime[c] = (originPx + (c - padL) * cellPx) * secPerPx;
+    };
+    const computeHeat = () =&gt; {
+      heatDirty = false;
+      heatShift = 0;
+      setColumnTimes();
+      const a = audio;
+      perPx = a &amp;&amp; totalW &gt; 0 ? a.length / totalW : 0;
+      lanes = a &amp;&amp; burnsWaveform() &amp;&amp; perPx &gt; 0 ? computeLanes(a) : [];
+      laneCount = lanes.length;
+      const size = Math.max(1, laneCount) * simW;
+      if (heat.length !== size) heat = new Float32Array(size);
+      if (laneCount) {
+        if (fuelTop.length !== size) {
+          fuelTop = new Int16Array(size);
+          fuelBottom = new Int16Array(size);
+          fuelCore = new Int16Array(size);
+        }
+        fuelTop.fill(-1);
+        heat.fill(0);
+      }
+      computeColumns(0, simW);
+    };
+    const shiftHeat = () =&gt; {
+      const k = heatShift;
+      heatShift = 0;
+      if (!Number.isInteger(k) || k &gt;= simW || -k &gt;= simW) {
+        computeHeat();
+        return;
+      }
+      setColumnTimes();
+      shiftRows(heat, simW, k);
+      if (laneCount) {
+        shiftRows(fuelTop, simW, k, -1);
+        shiftRows(fuelBottom, simW, k);
+        shiftRows(fuelCore, simW, k);
+      }
+      computeColumns(k &gt; 0 ? simW - k : 0, k &gt; 0 ? simW : -k);
+    };
+    let fftSize = 0;
+    let fft = null;
+    let re = new Float64Array(0);
+    let im = new Float64Array(0);
+    let hann = new Float64Array(0);
+    let spectrumKey = "";
+    const computeSpectrum = () =&gt; {
+      const a = audio;
+      const visible = Math.max(1, Math.round(viewW / cellPx));
+      const now = ctx.wavesurfer.getCurrentTime();
+      const n = 2 ** Math.round(Math.log2(Math.min(32768, Math.max(64, opts.fftSize))));
+      const range = opts.dbRange ?? 72;
+      const key = `${now}|${simW}|${visible}|${n}|${range}|${opts.maxFrequency}|${opts.normalize}`;
+      if (key === spectrumKey) return;
+      spectrumKey = key;
+      heat.fill(0);
+      if (!a || !a.rate) return;
+      if (n !== fftSize) {
+        fftSize = n;
+        fft = createFFT(n);
+        re = new Float64Array(n);
+        im = new Float64Array(n);
+        hann = new Float64Array(n);
+        for (let i = 0; i &lt; n; i++) hann[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (n - 1));
+      }
+      const start = Math.round(duration &gt; 0 ? now / duration * a.length : now * a.rate) - (n &gt;&gt; 1);
+      const channelCount = a.channels.length;
+      for (let i = 0; i &lt; n; i++) {
+        const index = start + i;
+        let v = 0;
+        if (index &gt;= 0 &amp;&amp; index &lt; a.length) {
+          for (let ch = 0; ch &lt; channelCount; ch++) v += a.channels[ch][index];
+          v /= channelCount;
+        }
+        re[i] = v * hann[i];
+        im[i] = 0;
+      }
+      fft?.(re, im);
+      const half = n &gt;&gt; 1;
+      const nyquist = a.rate / 2;
+      const top = Math.min(opts.maxFrequency ?? nyquist, nyquist);
+      const bins = Math.max(1, Math.min(half, Math.round(top / nyquist * half)));
+      const scale = 4 / n / (opts.normalize &amp;&amp; a.peak &gt; 0 ? a.peak : 1);
+      for (let c = 0; c &lt; visible; c++) {
+        const b0 = 1 + Math.floor(c * bins / visible);
+        const b1 = Math.max(b0 + 1, 1 + Math.floor((c + 1) * bins / visible));
+        let max = 0;
+        for (let b = b0; b &lt; b1 &amp;&amp; b &lt;= half; b++) {
+          const mag = re[b] * re[b] + im[b] * im[b];
+          if (mag &gt; max) max = mag;
+        }
+        const level = Math.sqrt(max) * scale;
+        heat[padL + c] = level &gt; 0 ? clamp01(1 + 20 * Math.log10(level) / range) : 0;
+      }
+    };
+    const computeLevels = () =&gt; {
+      const laneRows = Math.max(1, laneCount);
+      if (levels.length !== laneRows * simW) levels = new Uint8Array(laneRows * simW);
+      const gain = opts.gain * MAX_HEAT * (opts.source === "spectrum" ? 1 : pulse);
+      const source = opts.source;
+      const toLevel = (h) =&gt; {
+        const v = Math.round(h * gain);
+        return v &gt; 0 ? v &lt; MAX_HEAT ? v : MAX_HEAT : 0;
+      };
+      if (typeof source === "function") {
+        for (let c = 0; c &lt; simW; c++) {
+          const level = toLevel(clamp01(Number(source(colTime[c] + colSpan / 2, c - padL))));
+          for (let l = 0; l &lt; laneRows; l++) levels[l * simW + c] = level;
+        }
+        return;
+      }
+      if (source === "spectrum") computeSpectrum();
+      if (source === "progress") {
+        const now = ctx.wavesurfer.getCurrentTime();
+        const burnTime = Math.max(0, opts.burnTime);
+        const embers = clamp01(opts.embers);
+        for (let c = 0; c &lt; simW; c++) {
+          const since = now - colTime[c];
+          const envelope = since &lt; 0 ? 0 : burnTime &gt; 0 ? embers + (1 - embers) * Math.exp(-since / burnTime) : 1;
+          for (let l = 0; l &lt; laneRows; l++) levels[l * simW + c] = toLevel(heat[l * simW + c] * envelope);
+        }
+        return;
+      }
+      for (let i = 0; i &lt; levels.length; i++) levels[i] = toLevel(heat[i]);
+    };
+    const applyFuel = () =&gt; {
+      for (let l = 0; l &lt; laneCount; l++) {
+        for (let c = 0; c &lt; simW; c++) {
+          const k = l * simW + c;
+          const level = levels[k];
+          const top = fuelTop[k];
+          if (!level || top &lt; 0) continue;
+          const bottom = fuelBottom[k];
+          const core = fuelCore[k];
+          for (let r = top; r &lt;= bottom; r++) {
+            const d = r &lt; core ? (core - r) / (core - top + 1) : (r - core) / (bottom - core + 1);
+            const v = Math.round(level * (1 - 0.45 * d)) - (Math.random() * 3 | 0);
+            fire[r * simW + c] = v &gt; 0 ? v : 0;
+          }
+        }
+      }
+    };
+    const updateStoke = () =&gt; {
+      const ws = ctx.wavesurfer;
+      const a = audio;
+      const playing = ws.isPlaying();
+      let live = 0;
+      stokeCol = -1;
+      if (a &amp;&amp; duration &gt; 0 &amp;&amp; totalW &gt; 0 &amp;&amp; opts.source !== "spectrum") {
+        const now = ws.getCurrentTime();
+        stokeCol = (now / duration * totalW - originPx) / cellPx + padL;
+        if (playing) {
+          const reference = opts.normalize &amp;&amp; a.peak &gt; 0 ? a.peak : 1;
+          const at = now / duration * a.length;
+          const span = 0.03 / duration * a.length;
+          live = Math.pow(clamp01(peakBetween(a, at - span, at + span) / reference), 0.6);
+        }
+      }
+      const rise = live - slowLevel;
+      stokeLevel = live &gt; stokeLevel ? live : stokeLevel * 0.8;
+      slowLevel += (live - slowLevel) * 0.1;
+      pulseLevel = live &gt; pulseLevel ? live : pulseLevel * 0.9;
+      const calm = 1 - 0.5 * Math.min(1, Math.max(0, opts.stoke));
+      const target = playing &amp;&amp; stokeCol &gt;= 0 ? calm + (1 - calm) * pulseLevel : calm;
+      pulse += (target - pulse) * 0.3;
+      if (!playing || opts.sparks &lt;= 0) {
+        sparkBudget = 0;
+        return;
+      }
+      if (rise &gt; 0.08) sparkBudget += rise * 24 * opts.sparks;
+      sparkBudget += live * live * 0.5 * opts.sparks;
+    };
+    const stokeRadius = () =&gt; Math.max(2, Math.round(36 / cellPx));
+    const applyStoke = () =&gt; {
+      const peak = Math.min(1, stokeLevel * opts.stoke);
+      if (stokeCol &lt; 0 || peak &lt; 0.04) return;
+      const radius = stokeRadius();
+      const spread = radius * 0.6;
+      const fuel = burnsWaveform();
+      const laneRows = fuel ? laneCount : 1;
+      const last = Math.min(simW - 1, Math.ceil(stokeCol + radius));
+      for (let c = Math.max(0, Math.floor(stokeCol - radius)); c &lt;= last; c++) {
+        const x = (c + 0.5 - stokeCol) / spread;
+        const strength = peak * Math.exp(-x * x);
+        if (strength &lt; 0.04) continue;
+        const hot = Math.round(MAX_HEAT * strength);
+        const jet = Math.round(strength * rows * 0.35);
+        for (let l = 0; l &lt; laneRows; l++) {
+          const top = fuel ? fuelTop[l * simW + c] : rows - 1;
+          if (top &lt; 0) continue;
+          const bottom = fuel ? fuelBottom[l * simW + c] : rows - 1;
+          for (let r = Math.max(0, top - jet); r &lt;= bottom; r++) {
+            const i = r * simW + c;
+            const v = hot - (Math.random() * 3 | 0);
+            if (v &gt; fire[i]) fire[i] = v;
+          }
+        }
+      }
+    };
+    const moveSparks = () =&gt; {
+      let count = stokeCol &gt;= 0 ? Math.min(12, Math.floor(sparkBudget)) : 0;
+      sparkBudget -= count;
+      if (sparkBudget &gt; 20) sparkBudget = 20;
+      const radius = stokeRadius();
+      const lean = opts.wind === "left" ? -1 : opts.wind === "right" ? 1 : 0;
+      const jet = Math.round(Math.min(1, stokeLevel * opts.stoke) * rows * 0.35);
+      while (count-- &gt; 0) {
+        const c = Math.round(stokeCol + (Math.random() * 2 - 1) * radius * 0.6);
+        if (c &lt; 0 || c &gt;= simW) continue;
+        let top = rows - 1;
+        if (burnsWaveform()) {
+          top = -1;
+          for (let l = 0, seen = 0; l &lt; laneCount; l++) {
+            const laneTop = fuelTop[l * simW + c];
+            if (laneTop &gt;= 0 &amp;&amp; Math.random() * ++seen &lt; 1) top = laneTop;
+          }
+        }
+        if (top &lt; 0) continue;
+        sparks.push({
+          x: c,
+          y: Math.max(1, top - Math.random() * (jet + 3)),
+          vx: lean * (0.2 + Math.random() * 0.6) + (Math.random() - 0.5) * 0.5,
+          vy: -(0.6 + Math.random() * 0.7),
+          heat: MAX_HEAT - Math.random() * 3,
+          cool: 0.7 + Math.random() * 0.8
+        });
+      }
+      if (sparks.length &gt; 96) sparks.splice(0, sparks.length - 96);
+      let kept = 0;
+      for (const spark of sparks) {
+        spark.x += spark.vx;
+        spark.y += spark.vy;
+        spark.heat -= spark.cool;
+        const c = Math.round(spark.x);
+        const r = Math.round(spark.y);
+        if (spark.heat &lt; 1 || r &lt; 0 || r &gt;= rows || c &lt; 0 || c &gt;= simW) continue;
+        const i = r * simW + c;
+        const v = Math.round(spark.heat);
+        if (v &gt; fire[i]) fire[i] = v;
+        sparks[kept++] = spark;
+      }
+      sparks.length = kept;
+    };
+    const seed = () =&gt; {
+      const base = (rows - 1) * simW;
+      if (!burning) {
+        fire.fill(0, base, base + simW);
+        stokeLevel = 0;
+        sparkBudget = 0;
+        return;
+      }
+      updateStoke();
+      computeLevels();
+      if (burnsWaveform()) {
+        fire.fill(0, base, base + simW);
+        applyFuel();
+      } else {
+        fire.set(levels, base);
+      }
+      applyStoke();
+    };
+    const relight = () =&gt; {
+      if (burning) {
+        if (burnsWaveform()) applyFuel();
+        applyStoke();
+      }
+      moveSparks();
+    };
+    const draw = () =&gt; {
+      if (!cols || !rows) return;
+      if (opts.debug) {
+        drawDebug();
+        return;
+      }
+      if (!image) resizeBacking();
+      if (!image) return;
+      const colors = palette.packed;
+      for (let r = 0; r &lt; rows; r++) {
+        let s = r * simW + padL;
+        let d = r * cols;
+        const end = d + cols;
+        while (d &lt; end) pixels[d++] = colors[fire[s++]];
+      }
+      g.putImageData(image, 0, 0);
+    };
+    const drawDebug = () =&gt; {
+      const size = cellPx;
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.clearRect(0, 0, cols * size, rows * size);
+      const showText = size &gt;= 12;
+      if (showText) {
+        const fontSize = Math.max(7, Math.floor(size * 0.42));
+        g.font = `600 ${fontSize}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+      }
+      const hot = MAX_HEAT * 0.55;
+      for (let r = 0; r &lt; rows; r++) {
+        for (let c = 0; c &lt; cols; c++) {
+          const v = fire[r * simW + padL + c];
+          const x = c * size;
+          const y = r * size;
+          if (v) {
+            g.fillStyle = palette.css[v];
+            g.fillRect(x, y, size - 1, size - 1);
+          }
+          if (showText) {
+            g.fillStyle = v &gt; hot ? "rgba(0,0,0,0.78)" : v ? "rgba(255,255,255,0.92)" : "rgba(128,128,128,0.4)";
+            g.fillText(String(v), x + size / 2, y + size / 2 + 0.5);
+          }
+        }
+      }
+    };
+    const isDark = () =&gt; {
+      for (let r = 0; r &lt; rows; r++) {
+        const start = r * simW + padL;
+        for (let i = start; i &lt; start + cols; i++) if (fire[i]) return false;
+      }
+      return true;
+    };
+    let cancelFrame = null;
+    let lastTime = 0;
+    let backlog = 0;
+    let onScreen = true;
+    const frame = (now) =&gt; {
+      cancelFrame = null;
+      const visible = onScreen &amp;&amp; syncLayout();
+      if (!visible &amp;&amp; (burning || burntOut)) return;
+      if (visible &amp;&amp; heatDirty) computeHeat();
+      else if (visible &amp;&amp; heatShift) shiftHeat();
+      const interval = 1e3 / Math.min(120, Math.max(1, opts.fps));
+      if (!lastTime) {
+        lastTime = now;
+        backlog = interval;
+      }
+      backlog = Math.min(backlog + now - lastTime, interval * 4);
+      lastTime = now;
+      let steps = 0;
+      while (backlog &gt;= interval) {
+        backlog -= interval;
+        seed();
+        stepFire(fire, simW, rows, opts.wind, Math.random, reverse = !reverse);
+        relight();
+        steps++;
+      }
+      if (visible &amp;&amp; (steps || redraw)) {
+        draw();
+        redraw = false;
+      }
+      if (steps &amp;&amp; !burning &amp;&amp; isDark()) {
+        if (!burntOut) {
+          burntOut = true;
+          fire.fill(0);
+          sparks = [];
+          ctx.emit("burnout");
+        }
+        return;
+      }
+      cancelFrame = ctx.scope.raf(frame);
+    };
+    const wake = (force = false) =&gt; {
+      if (cancelFrame || ctx.scope.disposed) return;
+      if (!onScreen &amp;&amp; (burning || burntOut)) return;
+      if (!force &amp;&amp; !burning &amp;&amp; burntOut) return;
+      lastTime = 0;
+      cancelFrame = ctx.scope.raf(frame);
+    };
+    if (typeof IntersectionObserver !== "undefined") {
+      const observer = new IntersectionObserver((entries) =&gt; {
+        onScreen = entries[entries.length - 1].isIntersecting;
+        if (onScreen) {
+          redraw = true;
+          wake(true);
+        }
+      });
+      observer.observe(layer);
+      ctx.scope.add(() =&gt; observer.disconnect());
+    }
+    ctx.scope.add(
+      ctx.wavesurfer.on("decode", () =&gt; {
+        loadAudio();
+        wake();
+      })
+    );
+    ctx.scope.add(
+      ctx.wavesurfer.on("redraw", () =&gt; {
+        heatDirty = true;
+        wake(opts.debug);
+      })
+    );
+    for (const name of ["zoom", "scroll", "resize"]) ctx.scope.add(ctx.wavesurfer.on(name, () =&gt; wake(opts.debug)));
+    const wakeEvents = ["ready", "timeupdate", "seeking", "play"];
+    for (const name of wakeEvents) ctx.scope.add(ctx.wavesurfer.on(name, () =&gt; wake()));
+    ctx.scope.add(() =&gt; {
+      audio = null;
+      fire = new Uint8Array(0);
+    });
+    if (ctx.wavesurfer.getDecodedData()) loadAudio();
+    wake(true);
+    const ignite = () =&gt; {
+      if (burning || ctx.scope.disposed) return;
+      burning = true;
+      burntOut = false;
+      ctx.emit("ignite");
+      wake();
+    };
+    const extinguish = () =&gt; {
+      if (!burning || ctx.scope.disposed) return;
+      burning = false;
+      ctx.emit("extinguish");
+      wake(true);
+    };
+    const setOptions = (changes) =&gt; {
+      if (ctx.scope.disposed) return;
+      const next = changes || {};
+      const previous = opts;
+      opts = withDefaults(opts, next);
+      if ("palette" in next) palette = buildPalette(opts.palette);
+      if ("layer" in next || "blendMode" in next || "opacity" in next) mount();
+      if (opts.debug !== previous.debug) resizeBacking();
+      heatDirty = true;
+      spectrumKey = "";
+      redraw = true;
+      if (next.burning === true) ignite();
+      else if (next.burning === false) extinguish();
+      wake(true);
+    };
+    const getIntensities = () =&gt; {
+      const data = new Uint8Array(cols * rows);
+      for (let r = 0; r &lt; rows; r++) data.set(fire.subarray(r * simW + padL, r * simW + padL + cols), r * cols);
+      return { columns: cols, rows, data };
+    };
+    return {
+      ignite,
+      extinguish,
+      isBurning: () =&gt; burning,
+      setOptions,
+      getCanvas: () =&gt; canvas,
+      getIntensities
+    };
+  }
+);
+var doomfire_default = DoomFirePlugin;
+export {
+  DOOM_FIRE_PALETTE,
+  doomfire_default as default,
+  stepFire
+};</pre>
+    </details>
+  </section>
+
+  <footer class="credits">
+    <p>Fire algorithm and palette: <a href="https://github.com/filipedeschamps/doom-fire-algorithm" target="_blank" rel="noopener">doom-fire-algorithm</a> by Filipe Deschamps, MIT licence (<a href="https://github.com/filipedeschamps/doom-fire-algorithm/tree/master/playground/1st-implementation-with-tables" target="_blank" rel="noopener">1st-implementation-with-tables</a>).</p>
+    <p>After <a href="https://fabiensanglard.net/doom_fire_psx/" target="_blank" rel="noopener">How DOOM fire was done</a> by Fabien Sanglard.</p>
+    <p>Waveform by <a href="https://wavesurfer.xyz" target="_blank" rel="noopener">wavesurfer.js</a> 8.0.1, BSD-3-Clause. The test tape is synthesized in your browser.</p>
+  </footer>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@8.0.1/dist/wavesurfer.min.js" integrity="sha384-cFoZUUrlVjbDowT5/idDYja9T/OY8JaecFDFEt6O/CHQxJjjQR440T5VhilWib4U" crossorigin="anonymous"></script>
+<script>"use strict";
+(() => {
+// Run the plugin from the source shown on the page, so the demo, the source panel and
+// "Copy doomfire.esm.js" can never drift apart. Without wavesurfer.js only the palette is used.
+var pluginSource = document.getElementById("plugin-source").textContent;
+var pluginBody = pluginSource.slice(0, pluginSource.lastIndexOf("export {")).replace('import WaveSurfer from "wavesurfer.js";', "");
+var { DOOM_FIRE_PALETTE, DoomFirePlugin } = new Function("WaveSurfer", '"use strict";' + pluginBody + "return { DOOM_FIRE_PALETTE, DoomFirePlugin };")(window.WaveSurfer || { definePlugin() {} });
+var Me = window.WaveSurfer, Be = DOOM_FIRE_PALETTE, rt = DoomFirePlugin;
+var xe=class{constructor(){this.context=null;this.gain=null;this.node=null;this.buffer=null;this.listeners=new Map;this.startedAt=0;this.position=0;this.rate=1;this.level=1;this.silent=!1;this.source="";this.paused=!0;this.seeking=!1;this.autoplay=!1;this.controls=!1;this.crossOrigin=null;this.preservesPitch=!0;this.error=null;this.onceWrappers=new Map}useBuffer(n){this.buffer=n}addEventListener(n,l,o){if(this.listeners.has(n)||this.listeners.set(n,new Set),typeof o=="object"&&o.once){let p=(...b)=>{this.removeEventListener(n,l),l(...b)};this.onceWrappers.set(l,p),this.listeners.get(n)?.add(p);return}this.listeners.get(n)?.add(l)}removeEventListener(n,l){let o=this.listeners.get(n);o?.delete(l);let p=this.onceWrappers.get(l);p&&(o?.delete(p),this.onceWrappers.delete(l))}emit(n){this.listeners.get(n)?.forEach(l=>l(new Event(n)))}get src(){return this.source}set src(n){if(this.stopNode(),this.paused=!0,this.position=0,this.source=n,!n){this.emit("emptied");return}queueMicrotask(()=>{this.source!==n||!this.buffer||(this.emit("loadedmetadata"),this.emit("durationchange"),this.emit("canplay"),this.emit("timeupdate"))})}get currentSrc(){return this.source}get readyState(){return this.buffer&&this.source?4:0}get duration(){return this.buffer?.duration??0}get ended(){return this.paused&&this.duration>0&&this.position>=this.duration-.01}get currentTime(){return this.paused||!this.context?this.position:Math.min(this.duration,this.position+(this.context.currentTime-this.startedAt)*this.rate)}set currentTime(n){let l=!this.paused;l&&this.stopNode(),this.position=Math.max(0,Math.min(n,this.duration)),l&&this.startNode(),this.emit("seeking"),this.emit("seeked"),this.emit("timeupdate")}get playbackRate(){return this.rate}set playbackRate(n){let l=!this.paused;l&&(this.position=this.currentTime,this.stopNode()),this.rate=n||1,l&&this.startNode(),this.emit("ratechange")}get volume(){return this.level}set volume(n){this.level=n,this.gain&&(this.gain.gain.value=this.silent?0:n),this.emit("volumechange")}get muted(){return this.silent}set muted(n){this.silent=n,this.gain&&(this.gain.gain.value=n?0:this.level),this.emit("volumechange")}async play(){if(!(!this.paused||!this.buffer)){if(!this.context){let n=navigator.audioSession;try{n&&(n.type="playback")}catch{}this.context=new AudioContext,this.gain=this.context.createGain(),this.gain.gain.value=this.silent?0:this.level,this.gain.connect(this.context.destination)}this.context.state==="suspended"&&this.context.resume().catch(()=>{}),this.position>=this.duration-.01&&(this.position=0),this.paused=!1,this.startNode(),this.emit("play"),this.emit("playing")}}pause(){this.paused||(this.position=this.currentTime,this.stopNode(),this.paused=!0,this.emit("pause"))}load(){}canPlayType(){return"maybe"}removeAttribute(n){n==="src"&&(this.src="")}remove(){this.stopNode(),this.context?.close().catch(()=>{}),this.context=null,this.listeners.clear()}startNode(){if(!this.context||!this.gain||!this.buffer)return;let n=this.context.createBufferSource();n.buffer=this.buffer,n.playbackRate.value=this.rate,n.connect(this.gain),n.onended=()=>{n===this.node&&(this.node=null,this.position=this.duration,this.paused=!0,this.emit("pause"),this.emit("ended"))},n.start(0,this.position),this.startedAt=this.context.currentTime,this.node=n}stopNode(){let n=this.node;if(this.node=null,!!n){n.onended=null;try{n.stop()}catch{}n.disconnect()}}};var st=[{start:0,end:4,label:"Sweep"},{start:5,end:11,label:"Groove"},{start:12,end:17,label:"Chirps"},{start:19.5,end:24,label:"Swell"}];async function at(e=44100){let l=new OfflineAudioContext(1,e*24,e),o=l.createGain();o.gain.value=.8,o.connect(l.destination);let p=l.createBuffer(1,e,e),b=p.getChannelData(0);for(let a=0;a<b.length;a++)b[a]=Math.random()*2-1;{let a=l.createOscillator(),m=l.createGain();a.frequency.setValueAtTime(80,0),a.frequency.exponentialRampToValueAtTime(7e3,4),m.gain.setValueAtTime(1e-4,0),m.gain.exponentialRampToValueAtTime(.9,3.7),m.gain.linearRampToValueAtTime(0,4),a.connect(m).connect(o),a.start(0),a.stop(4)}let M=60/124,y=(a,m=1)=>{let d=l.createOscillator(),k=l.createGain();d.frequency.setValueAtTime(160,a),d.frequency.exponentialRampToValueAtTime(42,a+.18),k.gain.setValueAtTime(m,a),k.gain.exponentialRampToValueAtTime(.001,a+.4),d.connect(k).connect(o),d.start(a),d.stop(a+.42)},v=(a,m,d,k,E)=>{let c=l.createBufferSource();c.buffer=p;let A=l.createBiquadFilter();A.type=k,A.frequency.value=d,A.Q.value=.9;let L=l.createGain();L.gain.setValueAtTime(E,a),L.gain.exponentialRampToValueAtTime(.001,a+m),c.connect(A).connect(L).connect(o),c.start(a,Math.random()*.5),c.stop(a+m+.02)},u=[41.2,41.2,49,41.2,55,41.2,61.7,49];for(let a=0;a*M<6-.01;a++){let m=5+a*M,d=Math.floor(a/4);y(m,a%4===0?1:.8),a%2===1&&v(m,.2,1800,"bandpass",.7),v(m,.05,8e3,"highpass",.25),v(m+M/2,.05,8e3,"highpass",.18);for(let k=0;k<2;k++){let E=u[(a*2+k+d)%u.length],c=m+k*M/2,A=l.createOscillator();A.type="sawtooth",A.frequency.value=E*2;let L=l.createBiquadFilter();L.type="lowpass",L.frequency.setValueAtTime(900,c),L.frequency.exponentialRampToValueAtTime(160,c+M/2);let z=l.createGain();z.gain.setValueAtTime(.32,c),z.gain.exponentialRampToValueAtTime(.001,c+M/2-.01),A.connect(L).connect(z).connect(o),A.start(c),A.stop(c+M/2)}}let T=(a,m,d,k)=>{let E=l.createOscillator();E.frequency.value=m;let c=l.createGain();c.gain.setValueAtTime(0,a),c.gain.linearRampToValueAtTime(k,a+d*.3),c.gain.linearRampToValueAtTime(0,a+d),E.connect(c).connect(o),E.start(a),E.stop(a+d+.01)};for(let a=0;a<9;a++){let m=12+a*.55,d=a%3===2?2300:4400,k=.35+.5*Math.sin(a/8*Math.PI);for(let E=0;E<6;E++)T(m+E*.045,d,.03,k)}{let a=[110,164.8,220,261.6,329.6,493.9],m=l.createBiquadFilter();m.type="lowpass",m.frequency.setValueAtTime(300,17.5),m.frequency.exponentialRampToValueAtTime(5e3,21),m.frequency.exponentialRampToValueAtTime(400,24);let d=l.createGain();d.gain.setValueAtTime(1e-4,17.5),d.gain.exponentialRampToValueAtTime(.5,21),d.gain.exponentialRampToValueAtTime(.002,23.9),m.connect(d).connect(o);for(let k of a)for(let E of[-7,7]){let c=l.createOscillator();c.type="sawtooth",c.frequency.value=k,c.detune.value=E,c.connect(m),c.start(17.5),c.stop(24)}}return l.startRendering()}var I=e=>document.querySelector(e),Vt=matchMedia("(prefers-reduced-motion: reduce)").matches,ft=matchMedia("(max-width: 560px)").matches,Ae=e=>`${Math.floor(e/60)}:${String(Math.floor(e%60)).padStart(2,"0")}`,Nt=I("#palette");Be.forEach(([e,n,l],o)=>{let p=document.createElement("li");p.style.setProperty("--swatch",`rgb(${e} ${n} ${l})`),p.dataset.heat=String(o),p.title=`heat ${o}: rgb(${e}, ${n}, ${l})`,p.innerHTML=`<span>${o}</span>`,Nt.appendChild(p)});document.querySelectorAll("[data-copy]").forEach(e=>{e.addEventListener("click",async()=>{let n=document.getElementById(e.dataset.copy||""),l=n?.textContent?.trim()??"",o=p=>{let b=e.dataset.label||e.textContent||"";e.dataset.label=b,e.textContent=p,setTimeout(()=>e.textContent=b,1600)};try{await navigator.clipboard.writeText(l),o("Copied")}catch{if(n instanceof HTMLElement&&n.tagName==="PRE"){n.closest("details")?.setAttribute("open","");let p=document.createRange();p.selectNodeContents(n),getSelection()?.removeAllRanges(),getSelection()?.addRange(p),o("Selected")}else o("Copy blocked here")}})});if(!Me){I("#stage-status").textContent="Couldn't load wavesurfer.js from cdn.jsdelivr.net, so the demo can't run. Check your connection or content blocker, then reload.";return}var dt=new xe,D=Me.create({container:"#waveform",height:ft?150:200,waveColor:"#46525f",progressColor:"#252d36",cursorColor:"#f6c56b",cursorWidth:2,barWidth:2,barGap:1,barRadius:1,barHeight:.6,sampleRate:22050,dragToSeek:!0,media:dt}),R=D.registerPlugin(rt.create({fps:Vt?12:30,maxFrequency:8e3})),Re=I("#play"),Ut=I("#time"),lt=I("#heat"),We=e=>{Re.textContent=e?"Pause":"Play",Re.toggleAttribute("data-playing",e)};Re.addEventListener("click",()=>D.playPause());D.on("play",()=>We(!0));D.on("pause",()=>We(!1));D.on("finish",()=>We(!1));var qe=()=>{Ut.textContent=`${Ae(D.getCurrentTime())} / ${Ae(D.getDuration())}`};D.on("timeupdate",qe);D.on("ready",qe);var pt=I("#chapters");st.forEach(({start:e,label:n})=>{let l=document.createElement("button");l.type="button",l.className="chip",l.innerHTML=`${n} <span>${Ae(e)}</span>`,l.addEventListener("click",()=>D.setTime(e)),pt.appendChild(l)});var Le="waveform",Oe=8e3,mt=()=>{let{columns:e,rows:n,data:l}=R.getIntensities();if(!e||!n)return;let o=l.subarray((n-1)*e);if(Le==="spectrum"){let u=0;for(let a=1;a<e-1;a++)o[a]>o[u]&&(u=a);let T=Oe??(D.getDecodedData()?.sampleRate??22050)/2;lt.textContent=o[u]?`Hottest band \u2248 ${((u+.5)/(e-1)*T/1e3).toFixed(1)} kHz`:"Spectrum is quiet";return}let p=R.getCanvas(),b=parseFloat(p.style.width)/e,M=D.getCurrentTime()/Math.max(D.getDuration(),.001)*D.getWrapper().clientWidth,y=Math.floor((M-parseFloat(p.style.left))/b),v=0;if(y>=0&&y<e)for(let u=0;u<n;u++)v=Math.max(v,l[u*e+y]);lt.textContent=`Heat at the playhead: ${v} / 36`};setInterval(mt,200);var me=(e,n)=>{document.querySelectorAll(`input[name="${e}"]`).forEach(l=>{l.addEventListener("change",()=>l.checked&&n(l.value))})};me("source",e=>{Le=e,R.setOptions({source:Le}),mt()});me("base",e=>R.setOptions({base:e}));me("stoke",e=>R.setOptions({stoke:Number(e),sparks:Number(e)}));me("wind",e=>R.setOptions({wind:e}));me("layer",e=>R.setOptions({layer:e}));var $e=I("#cell"),ht=I("#numbers"),gt=()=>{let e=$e.value==="auto"?void 0:Number($e.value);ht.checked?R.setOptions({debug:!0,pixelSize:Math.max(e??0,ft?18:22)}):R.setOptions({debug:!1,pixelSize:e})};$e.addEventListener("change",gt);ht.addEventListener("change",gt);var Ie=I("#zoom"),bt=I("#zoom-value");Ie.addEventListener("input",()=>{let e=Number(Ie.value);bt.textContent=e?`${e} px/s`:"Fit",D.getDecodedData()&&D.zoom(e)});var yt=I("#fire"),ct=I("#fire-state"),Te=e=>{yt.textContent=e==="burning"?"Extinguish":"Ignite",ct.textContent={burning:"Burning",fading:"Fuel off, fading\u2026",out:"Out"}[e],ct.dataset.state=e};yt.addEventListener("click",()=>R.isBurning()?R.extinguish():R.ignite());R.on("ignite",()=>Te("burning"));R.on("extinguish",()=>Te("fading"));R.on("burnout",()=>Te("out"));Te("burning");var ut=I("#file"),De=I("#file-status"),loadId=0,vt=async(e,n,l)=>{D.pause(),dt.useBuffer(e);try{await D.loadBlob(n,Array.from({length:e.numberOfChannels},(o,p)=>e.getChannelData(p)),e.duration)}catch(o){if(l===loadId)throw o;return!1}return l!==loadId?!1:(D.options.minPxPerSec&&D.zoom(0),Ie.value="0",bt.textContent="Fit",qe(),!0)};ut.addEventListener("change",async()=>{let e=ut.files?.[0];if(!e)return;let n=++loadId;De.textContent=`Decoding ${e.name}\u2026`;try{let l=await new OfflineAudioContext(1,1,44100).decodeAudioData(await e.arrayBuffer());if(n!==loadId)return;Oe=void 0,R.setOptions({maxFrequency:Oe});if(!await vt(l,e,n))return;pt.hidden=!0,I("#stage-status").hidden=!0,De.textContent=`${e.name} \xB7 ${Ae(l.duration)}`}catch{n===loadId&&(De.textContent=`Couldn't decode ${e.name}. Try an MP3, WAV, M4A or OGG file.`)}});(async()=>{let e=I("#stage-status"),l=++loadId;try{let n=await at(22050);l===loadId&&await vt(n,new Blob,l)&&(e.hidden=!0)}catch(n){l===loadId&&(e.textContent="This browser could not render the demo audio. Choose a file of your own below.",console.error(n))}})();})();
+</script>
+
+</body></html>
