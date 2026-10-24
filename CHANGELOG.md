@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- `columnAt(time)` gives the column of `getIntensities()` that a time falls in,
+  or -1 if it is out of view. The demo's heat readout uses it, rather than
+  working the column out from the canvas's styles.
+- The spectrum source follows `scale`, as the options table said: with
+  `'linear'` a band's magnitude maps to heat linearly. It was always in
+  decibels.
+- A burning fire with nothing alight and nothing to light it, such as one over
+  silence or before its audio has loaded, stops stepping until a seek,
+  playback, new audio, a layout change or new options wakes it, rather than
+  stepping an empty grid `fps` times a second. A function source keeps it
+  stepping, as it can light the fire at any time.
+- The bars' fuel is stamped once a step rather than twice, which halves that
+  part of each step.
 - A script-tag build, `dist/doomfire.min.js`, for pages without a bundler.
   Loaded after wavesurfer.js's own script, it takes the page's `WaveSurfer` and
   attaches itself to it as `WaveSurfer.DoomFire`, with the palette and

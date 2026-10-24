@@ -63,7 +63,7 @@ const fire = ws.registerPlugin(WaveSurfer.DoomFire.create({ source: 'progress' }
 | `wind` | `'left'` | `'left'` is the original. `'none'` keeps flames above the sound that lit them. |
 | `pixelSize` | `4` | Cell size in CSS pixels, 1 or more. Smaller cells make finer, shorter flames: heat climbs one cell per step. |
 | `fps` | `30` | Fire steps per second. The original demo ran at 20. |
-| `scale` | `'db'` | Loudness to heat: `'db'` or `'linear'`. |
+| `scale` | `'db'` | Loudness to heat, for every source: `'db'` or `'linear'`. |
 | `dbRange` | `48` / `72` | Decibels below the loudest point that still give heat (loudness / spectrum). |
 | `normalize` | `true` | Measure against the loudest point in the file. |
 | `gain` | `1` | Heat multiplier. |
@@ -74,7 +74,7 @@ const fire = ws.registerPlugin(WaveSurfer.DoomFire.create({ source: 'progress' }
 | `burning` | `true` | Start lit. |
 | `fftSize`, `maxFrequency` | `2048`, Nyquist | Spectrum source settings. |
 
-Methods: `ignite()`, `extinguish()`, `isBurning()`, `setOptions()`, `getCanvas()`, `getIntensities()`. Events: `ignite`, `extinguish`, `burnout`. The layer is a `::part(doomfire)` you can style. The package also exports `DOOM_FIRE_PALETTE` and `stepFire`, one step of the fire on a grid of your own; the script-tag build has them as `WaveSurfer.DoomFire.DOOM_FIRE_PALETTE` and `WaveSurfer.DoomFire.stepFire`.
+Methods: `ignite()`, `extinguish()`, `isBurning()`, `setOptions()`, `getCanvas()`, `getIntensities()`, and `columnAt(time)`, the column of `getIntensities()` a time falls in (-1 out of view). Events: `ignite`, `extinguish`, `burnout`. The layer is a `::part(doomfire)` you can style. The package also exports `DOOM_FIRE_PALETTE` and `stepFire`, one step of the fire on a grid of your own; the script-tag build has them as `WaveSurfer.DoomFire.DOOM_FIRE_PALETTE` and `WaveSurfer.DoomFire.stepFire`.
 
 ## Develop
 

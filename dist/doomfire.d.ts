@@ -19,7 +19,7 @@ export type DoomFirePluginOptions = {
     fps?: number;
     /** Which way the flames lean. */
     wind?: DoomFireWind;
-    /** Loudness to heat. */
+    /** Loudness to heat, in decibels or linearly, for every source. */
     scale?: "db" | "linear";
     /** Decibels below the loudest point that still give heat (48 for loudness, 72 for the spectrum). */
     dbRange?: number;
@@ -63,6 +63,8 @@ export type DoomFireApi = {
         rows: number;
         data: Uint8Array;
     };
+    /** The column of getIntensities() that a time in seconds falls in, or -1 if it is out of view. */
+    columnAt(time: number): number;
 };
 export declare const DOOM_FIRE_PALETTE: [number, number, number][];
 /** One step of the fire, row by row from the top: each cell takes the cell below, cooled by 0-2 and blown by the wind. */

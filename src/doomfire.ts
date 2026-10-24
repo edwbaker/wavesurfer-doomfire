@@ -25,7 +25,7 @@ export type DoomFirePluginOptions = {
   fps?: number;
   /** Which way the flames lean. */
   wind?: DoomFireWind;
-  /** Loudness to heat. */
+  /** Loudness to heat, in decibels or linearly, for every source. */
   scale?: "db" | "linear";
   /** Decibels below the loudest point that still give heat (48 for loudness, 72 for the spectrum). */
   dbRange?: number;
@@ -67,6 +67,8 @@ export type DoomFireApi = {
   setOptions(options?: DoomFirePluginOptions | null): void;
   getCanvas(): HTMLCanvasElement;
   getIntensities(): { columns: number; rows: number; data: Uint8Array };
+  /** The column of getIntensities() that a time in seconds falls in, or -1 if it is out of view. */
+  columnAt(time: number): number;
 };
 
 type DefaultedOption = "source" | "base" | "burnTime" | "embers" | "stoke" | "sparks" | "fps" | "wind" | "scale" | "normalize" | "gain" | "layer" | "opacity" | "pixelSize" | "debug" | "burning" | "fftSize";
@@ -160,6 +162,8 @@ const finiteNumber = (value: unknown): number | undefined => {
 
 /** One step of the fire, row by row from the top: each cell takes the cell below, cooled by 0-2 and blown by the wind. */
 export function stepFire(fire: Uint8Array, width: number, height: number, wind: DoomFireWind = "left", random: () => number = Math.random, reverse = false): void {
+  // One loop per wind, not one loop that branches on it: this is the plugin's hottest loop, and a single
+  // loop ran 15-40% slower. The visiting order decides which wins when two cells land on the same one.
   for (let row = 0; row < height - 1; row++) {
     const rowStart = row * width;
     const below = rowStart + width;
@@ -362,8 +366,8 @@ const DoomFirePlugin: DefinedPlugin<DoomFirePluginOptions, DoomFirePluginEvents,
     };
     let opts = withDefaults({ ...defaults }, options);
     let palette = buildPalette(opts.palette);
-    let burning = opts.burning;
-    let burntOut = !burning;
+    // extinguishing a burning fire leaves it fading until its last cell goes dark, and then it's out
+    let state: "burning" | "fading" | "out" = opts.burning ? "burning" : "out";
 
     const layer = document.createElement("div");
     layer.setAttribute("part", "doomfire");
@@ -592,11 +596,14 @@ const DoomFirePlugin: DefinedPlugin<DoomFirePluginOptions, DoomFirePluginEvents,
       return max;
     };
 
-    const loudnessToHeat = (amplitude: number, a: Analysis) => {
-      const level = opts.normalize && a.peak > 0 ? amplitude / a.peak : amplitude;
-      if (opts.scale === "db") return level > 0 ? clamp01(1 + (20 * Math.log10(level)) / (opts.dbRange ?? 48)) : 0;
+    /** A level, as a share of full scale, to heat from 0 to 1: over `range` decibels below full scale, or linearly. */
+    const levelToHeat = (level: number, range: number) => {
+      if (opts.scale === "db") return level > 0 ? clamp01(1 + (20 * Math.log10(level)) / range) : 0;
       return clamp01(level);
     };
+
+    const loudnessToHeat = (amplitude: number, a: Analysis) =>
+      levelToHeat(opts.normalize && a.peak > 0 ? amplitude / a.peak : amplitude, opts.dbRange ?? 48);
 
     const computeLanes = (a: Analysis): Lane[] => {
       const wsOptions = ctx.wavesurfer.options;
@@ -770,7 +777,8 @@ const DoomFirePlugin: DefinedPlugin<DoomFirePluginOptions, DoomFirePluginEvents,
       const nyquist = a.rate / 2;
       const top = Math.min(opts.maxFrequency ?? nyquist, nyquist);
       const bins = Math.max(1, Math.min(half, Math.round((top / nyquist) * half)));
-      const scale = 4 / n / (opts.normalize && a.peak > 0 ? a.peak : 1);
+      // a bin's magnitude as a share of full scale: a full-scale sine peaks at n / 4 under the Hann window
+      const toLevel = 4 / n / (opts.normalize && a.peak > 0 ? a.peak : 1);
       for (let c = 0; c < visible; c++) {
         const b0 = 1 + Math.floor((c * bins) / visible);
         const b1 = Math.max(b0 + 1, 1 + Math.floor(((c + 1) * bins) / visible));
@@ -779,8 +787,7 @@ const DoomFirePlugin: DefinedPlugin<DoomFirePluginOptions, DoomFirePluginEvents,
           const mag = re[b] * re[b] + im[b] * im[b];
           if (mag > max) max = mag;
         }
-        const level = Math.sqrt(max) * scale;
-        heat[padL + c] = level > 0 ? clamp01(1 + (20 * Math.log10(level)) / range) : 0;
+        heat[padL + c] = levelToHeat(Math.sqrt(max) * toLevel, range);
       }
     };
 
@@ -941,7 +948,7 @@ const DoomFirePlugin: DefinedPlugin<DoomFirePluginOptions, DoomFirePluginEvents,
 
     const seed = () => {
       const base = (rows - 1) * simW;
-      if (!burning) {
+      if (state !== "burning") {
         fire.fill(0, base, base + simW);
         stokeLevel = 0;
         sparkBudget = 0;
@@ -949,17 +956,14 @@ const DoomFirePlugin: DefinedPlugin<DoomFirePluginOptions, DoomFirePluginEvents,
       }
       updateStoke();
       computeLevels();
-      if (burnsWaveform()) {
-        fire.fill(0, base, base + simW);
-        applyFuel();
-      } else {
-        fire.set(levels, base);
-      }
+      // the bars' fuel is stamped once a step, after it (in relight), so the step burns up from the last stamp
+      if (burnsWaveform()) fire.fill(0, base, base + simW);
+      else fire.set(levels, base);
       applyStoke();
     };
 
     const relight = () => {
-      if (burning) {
+      if (state === "burning") {
         if (burnsWaveform()) applyFuel();
         applyStoke();
       }
@@ -1013,8 +1017,9 @@ const DoomFirePlugin: DefinedPlugin<DoomFirePluginOptions, DoomFirePluginEvents,
       }
     };
 
+    // from the bottom up, where a fire burns
     const isDark = () => {
-      for (let r = 0; r < rows; r++) {
+      for (let r = rows - 1; r >= 0; r--) {
         const start = r * simW + padL;
         for (let i = start; i < start + cols; i++) if (fire[i]) return false;
       }
@@ -1029,7 +1034,7 @@ const DoomFirePlugin: DefinedPlugin<DoomFirePluginOptions, DoomFirePluginEvents,
       cancelFrame = null;
       const visible = onScreen && syncLayout();
       // out of view only a fading fire keeps stepping, so that 'burnout' still arrives
-      if (!visible && (burning || burntOut)) return;
+      if (!visible && state !== "fading") return;
       if (visible && heatDirty) computeHeat();
       else if (visible && heatShift) shiftHeat();
       const interval = 1e3 / Math.min(120, Math.max(1, opts.fps));
@@ -1051,23 +1056,24 @@ const DoomFirePlugin: DefinedPlugin<DoomFirePluginOptions, DoomFirePluginEvents,
         draw();
         redraw = false;
       }
-      // a burning fire keeps the loop running even when dark: a function source can light it at any time
-      if (steps && !burning && isDark()) {
-        if (!burntOut) {
-          burntOut = true;
-          fire.fill(0);
-          sparks = [];
-          ctx.emit("burnout");
-        }
-        return;
+      if (steps && state === "fading" && isDark()) {
+        state = "out";
+        fire.fill(0);
+        sparks = [];
+        ctx.emit("burnout");
       }
+      if (steps && state === "out") return;
+      // A burning fire with nothing alight and nothing to light it sleeps until an event wakes it: a seek,
+      // playback, new audio, a layout change or new options. A function source can light it at any time,
+      // so it never sleeps.
+      if (steps && state === "burning" && typeof opts.source !== "function" && !ctx.wavesurfer.isPlaying() && !sparks.length && isDark()) return;
       cancelFrame = ctx.scope.raf(frame);
     };
 
     const wake = (force = false) => {
       if (cancelFrame || ctx.scope.disposed) return;
-      if (!onScreen && (burning || burntOut)) return;
-      if (!force && !burning && burntOut) return;
+      if (!onScreen && state !== "fading") return;
+      if (!force && state === "out") return;
       lastTime = 0;
       cancelFrame = ctx.scope.raf(frame);
     };
@@ -1107,16 +1113,15 @@ const DoomFirePlugin: DefinedPlugin<DoomFirePluginOptions, DoomFirePluginEvents,
     wake(true);
 
     const ignite = () => {
-      if (burning || ctx.scope.disposed) return;
-      burning = true;
-      burntOut = false;
+      if (state === "burning" || ctx.scope.disposed) return;
+      state = "burning";
       ctx.emit("ignite");
       wake();
     };
 
     const extinguish = () => {
-      if (!burning || ctx.scope.disposed) return;
-      burning = false;
+      if (state !== "burning" || ctx.scope.disposed) return;
+      state = "fading";
       ctx.emit("extinguish");
       wake(true);
     };
@@ -1143,13 +1148,20 @@ const DoomFirePlugin: DefinedPlugin<DoomFirePluginOptions, DoomFirePluginEvents,
       return { columns: cols, rows, data };
     };
 
+    const columnAt = (time: number) => {
+      if (!(duration > 0) || !(totalW > 0) || !cellPx) return -1;
+      const column = Math.floor(((time / duration) * totalW - originPx) / cellPx);
+      return column >= 0 && column < cols ? column : -1;
+    };
+
     return {
       ignite,
       extinguish,
-      isBurning: () => burning,
+      isBurning: () => state === "burning",
       setOptions,
       getCanvas: () => canvas,
       getIntensities,
+      columnAt,
     };
   },
 );

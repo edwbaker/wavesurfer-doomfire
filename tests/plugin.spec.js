@@ -366,3 +366,62 @@ test.describe("heat and options", () => {
     expect(r.animating).toBe(true);
   });
 });
+
+test.describe("idling, scale and columns", () => {
+  test("the spectrum follows scale: linear lights fewer bands than decibels", async ({ page }) => {
+    const r = await page.evaluate(async () => {
+      const s = await harness.setup({ plugin: { source: "spectrum" }, shape: "beats" });
+      s.ws.setTime(0.1); // inside a loud beat
+      // the spectrum source burns from the bottom row, which holds its heat as it is
+      const lit = async (scale) => {
+        s.fire.setOptions({ scale });
+        await harness.wait(300);
+        const { columns, rows, data } = s.fire.getIntensities();
+        return data.subarray((rows - 1) * columns).filter((v) => v).length;
+      };
+      return { db: await lit("db"), linear: await lit("linear") };
+    });
+    expect(r.db).toBeGreaterThan(0);
+    expect(r.linear, `bands lit: ${r.db} in decibels, ${r.linear} linear`).toBeLessThan(r.db);
+  });
+
+  test("a dark, idle fire stops stepping until something lights it", async ({ page }) => {
+    const r = await page.evaluate(async () => {
+      const s = await harness.setup({ gains: [0] }); // silence: no fuel and nothing alight
+      await harness.wait(300);
+      let frames = 0;
+      const raf = window.requestAnimationFrame;
+      window.requestAnimationFrame = (callback) => {
+        frames++;
+        return raf(callback);
+      };
+      await harness.wait(1000);
+      const idleFrames = frames;
+      window.requestAnimationFrame = raf;
+      // new options wake it: a function source lights the floor, as the silence draws no bars to burn
+      s.fire.setOptions({ source: () => 1, base: "bottom" });
+      const lit = await harness.until(() => harness.hot(s.fire) > 50, 3000);
+      return { idleFrames, lit, burning: s.fire.isBurning() };
+    });
+    expect(r.idleFrames, "animation frames requested in a second of idling").toBeLessThan(3);
+    expect(r).toMatchObject({ lit: true, burning: true });
+  });
+
+  test("columnAt gives the column a time falls in, and -1 out of view", async ({ page }) => {
+    const r = await page.evaluate(async () => {
+      const s = await harness.setup({ seconds: 6 });
+      const at = (time) => s.fire.columnAt(time);
+      const width = s.ws.getWrapper().clientWidth;
+      const fitted = { start: at(0), middle: at(3), expectedMiddle: Math.floor(width / 2 / s.state().cellPx), before: at(-1), after: at(60) };
+      s.ws.zoom(400);
+      await harness.wait(300);
+      s.ws.setScroll(1200);
+      await harness.wait(400);
+      // the time at the left edge of the first column in view
+      const edge = (s.state().originPx / s.ws.getWrapper().clientWidth) * s.ws.getDuration();
+      return { ...fitted, startScrolledAway: at(0), edge: at(edge + 0.001) };
+    });
+    expect(r).toMatchObject({ start: 0, before: -1, after: -1, startScrolledAway: -1, edge: 0 });
+    expect(r.middle).toBe(r.expectedMiddle);
+  });
+});

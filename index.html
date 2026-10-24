@@ -566,7 +566,7 @@ fire.setOptions({ wind: 'none', palette: ['#000', '#123', '#39f', '#cff'] })</co
           <tr><td><code>wind</code></td><td>'left'</td><td><code>'left'</code> is the original. <code>'none'</code> keeps flames above the sound that lit them.</td></tr>
           <tr><td><code>pixelSize</code></td><td>4</td><td>Cell size in CSS pixels, 1 or more. Smaller cells make finer, shorter flames: heat climbs one cell per step.</td></tr>
           <tr><td><code>fps</code></td><td>30</td><td>Fire steps per second. The original demo ran at 20.</td></tr>
-          <tr><td><code>scale</code></td><td>'db'</td><td>Loudness to heat: <code>'db'</code> or <code>'linear'</code>.</td></tr>
+          <tr><td><code>scale</code></td><td>'db'</td><td>Loudness to heat, for every source: <code>'db'</code> or <code>'linear'</code>.</td></tr>
           <tr><td><code>dbRange</code></td><td>48 / 72</td><td>Decibels below the loudest point that still give heat (loudness / spectrum).</td></tr>
           <tr><td><code>normalize</code></td><td>true</td><td>Measure against the loudest point in the file.</td></tr>
           <tr><td><code>gain</code></td><td>1</td><td>Heat multiplier.</td></tr>
@@ -579,7 +579,7 @@ fire.setOptions({ wind: 'none', palette: ['#000', '#123', '#39f', '#cff'] })</co
         </tbody>
       </table>
     </div>
-    <p>Methods: <code>ignite()</code>, <code>extinguish()</code>, <code>isBurning()</code>, <code>setOptions()</code>, <code>getCanvas()</code>, <code>getIntensities()</code>. Events: <code>ignite</code>, <code>extinguish</code>, <code>burnout</code>. The layer is a <code>::part(doomfire)</code> you can style.</p>
+    <p>Methods: <code>ignite()</code>, <code>extinguish()</code>, <code>isBurning()</code>, <code>setOptions()</code>, <code>getCanvas()</code>, <code>getIntensities()</code>, and <code>columnAt(time)</code>, the column of <code>getIntensities()</code> a time falls in (-1 out of view). Events: <code>ignite</code>, <code>extinguish</code>, <code>burnout</code>. The layer is a <code>::part(doomfire)</code> you can style.</p>
     <details id="source-details">
       <summary>doomfire.esm.js</summary>
 <pre id="plugin-source" class="code">/*! DoomFire plugin for wavesurfer.js v8 — fire algorithm &amp; palette from doom-fire-algorithm by Filipe Deschamps (MIT) */
@@ -844,8 +844,7 @@ var DoomFirePlugin = WaveSurfer.definePlugin(
     };
     let opts = withDefaults({ ...defaults }, options);
     let palette = buildPalette(opts.palette);
-    let burning = opts.burning;
-    let burntOut = !burning;
+    let state = opts.burning ? "burning" : "out";
     const layer = document.createElement("div");
     layer.setAttribute("part", "doomfire");
     Object.assign(layer.style, {
@@ -1061,11 +1060,11 @@ var DoomFirePlugin = WaveSurfer.definePlugin(
       }
       return max;
     };
-    const loudnessToHeat = (amplitude, a) =&gt; {
-      const level = opts.normalize &amp;&amp; a.peak &gt; 0 ? amplitude / a.peak : amplitude;
-      if (opts.scale === "db") return level &gt; 0 ? clamp01(1 + 20 * Math.log10(level) / (opts.dbRange ?? 48)) : 0;
+    const levelToHeat = (level, range) =&gt; {
+      if (opts.scale === "db") return level &gt; 0 ? clamp01(1 + 20 * Math.log10(level) / range) : 0;
       return clamp01(level);
     };
+    const loudnessToHeat = (amplitude, a) =&gt; levelToHeat(opts.normalize &amp;&amp; a.peak &gt; 0 ? amplitude / a.peak : amplitude, opts.dbRange ?? 48);
     const computeLanes = (a) =&gt; {
       const wsOptions = ctx.wavesurfer.options;
       const ratio = Math.max(1, window.devicePixelRatio || 1);
@@ -1224,7 +1223,7 @@ var DoomFirePlugin = WaveSurfer.definePlugin(
       const nyquist = a.rate / 2;
       const top = Math.min(opts.maxFrequency ?? nyquist, nyquist);
       const bins = Math.max(1, Math.min(half, Math.round(top / nyquist * half)));
-      const scale = 4 / n / (opts.normalize &amp;&amp; a.peak &gt; 0 ? a.peak : 1);
+      const toLevel = 4 / n / (opts.normalize &amp;&amp; a.peak &gt; 0 ? a.peak : 1);
       for (let c = 0; c &lt; visible; c++) {
         const b0 = 1 + Math.floor(c * bins / visible);
         const b1 = Math.max(b0 + 1, 1 + Math.floor((c + 1) * bins / visible));
@@ -1233,8 +1232,7 @@ var DoomFirePlugin = WaveSurfer.definePlugin(
           const mag = re[b] * re[b] + im[b] * im[b];
           if (mag &gt; max) max = mag;
         }
-        const level = Math.sqrt(max) * scale;
-        heat[padL + c] = level &gt; 0 ? clamp01(1 + 20 * Math.log10(level) / range) : 0;
+        heat[padL + c] = levelToHeat(Math.sqrt(max) * toLevel, range);
       }
     };
     const computeLevels = () =&gt; {
@@ -1387,7 +1385,7 @@ var DoomFirePlugin = WaveSurfer.definePlugin(
     };
     const seed = () =&gt; {
       const base = (rows - 1) * simW;
-      if (!burning) {
+      if (state !== "burning") {
         fire.fill(0, base, base + simW);
         stokeLevel = 0;
         sparkBudget = 0;
@@ -1395,16 +1393,12 @@ var DoomFirePlugin = WaveSurfer.definePlugin(
       }
       updateStoke();
       computeLevels();
-      if (burnsWaveform()) {
-        fire.fill(0, base, base + simW);
-        applyFuel();
-      } else {
-        fire.set(levels, base);
-      }
+      if (burnsWaveform()) fire.fill(0, base, base + simW);
+      else fire.set(levels, base);
       applyStoke();
     };
     const relight = () =&gt; {
-      if (burning) {
+      if (state === "burning") {
         if (burnsWaveform()) applyFuel();
         applyStoke();
       }
@@ -1456,7 +1450,7 @@ var DoomFirePlugin = WaveSurfer.definePlugin(
       }
     };
     const isDark = () =&gt; {
-      for (let r = 0; r &lt; rows; r++) {
+      for (let r = rows - 1; r &gt;= 0; r--) {
         const start = r * simW + padL;
         for (let i = start; i &lt; start + cols; i++) if (fire[i]) return false;
       }
@@ -1469,7 +1463,7 @@ var DoomFirePlugin = WaveSurfer.definePlugin(
     const frame = (now) =&gt; {
       cancelFrame = null;
       const visible = onScreen &amp;&amp; syncLayout();
-      if (!visible &amp;&amp; (burning || burntOut)) return;
+      if (!visible &amp;&amp; state !== "fading") return;
       if (visible &amp;&amp; heatDirty) computeHeat();
       else if (visible &amp;&amp; heatShift) shiftHeat();
       const interval = 1e3 / Math.min(120, Math.max(1, opts.fps));
@@ -1491,21 +1485,20 @@ var DoomFirePlugin = WaveSurfer.definePlugin(
         draw();
         redraw = false;
       }
-      if (steps &amp;&amp; !burning &amp;&amp; isDark()) {
-        if (!burntOut) {
-          burntOut = true;
-          fire.fill(0);
-          sparks = [];
-          ctx.emit("burnout");
-        }
-        return;
+      if (steps &amp;&amp; state === "fading" &amp;&amp; isDark()) {
+        state = "out";
+        fire.fill(0);
+        sparks = [];
+        ctx.emit("burnout");
       }
+      if (steps &amp;&amp; state === "out") return;
+      if (steps &amp;&amp; state === "burning" &amp;&amp; typeof opts.source !== "function" &amp;&amp; !ctx.wavesurfer.isPlaying() &amp;&amp; !sparks.length &amp;&amp; isDark()) return;
       cancelFrame = ctx.scope.raf(frame);
     };
     const wake = (force = false) =&gt; {
       if (cancelFrame || ctx.scope.disposed) return;
-      if (!onScreen &amp;&amp; (burning || burntOut)) return;
-      if (!force &amp;&amp; !burning &amp;&amp; burntOut) return;
+      if (!onScreen &amp;&amp; state !== "fading") return;
+      if (!force &amp;&amp; state === "out") return;
       lastTime = 0;
       cancelFrame = ctx.scope.raf(frame);
     };
@@ -1542,15 +1535,14 @@ var DoomFirePlugin = WaveSurfer.definePlugin(
     if (ctx.wavesurfer.getDecodedData()) loadAudio();
     wake(true);
     const ignite = () =&gt; {
-      if (burning || ctx.scope.disposed) return;
-      burning = true;
-      burntOut = false;
+      if (state === "burning" || ctx.scope.disposed) return;
+      state = "burning";
       ctx.emit("ignite");
       wake();
     };
     const extinguish = () =&gt; {
-      if (!burning || ctx.scope.disposed) return;
-      burning = false;
+      if (state !== "burning" || ctx.scope.disposed) return;
+      state = "fading";
       ctx.emit("extinguish");
       wake(true);
     };
@@ -1574,13 +1566,19 @@ var DoomFirePlugin = WaveSurfer.definePlugin(
       for (let r = 0; r &lt; rows; r++) data.set(fire.subarray(r * simW + padL, r * simW + padL + cols), r * cols);
       return { columns: cols, rows, data };
     };
+    const columnAt = (time) =&gt; {
+      if (!(duration &gt; 0) || !(totalW &gt; 0) || !cellPx) return -1;
+      const column = Math.floor((time / duration * totalW - originPx) / cellPx);
+      return column &gt;= 0 &amp;&amp; column &lt; cols ? column : -1;
+    };
     return {
       ignite,
       extinguish,
-      isBurning: () =&gt; burning,
+      isBurning: () =&gt; state === "burning",
       setOptions,
       getCanvas: () =&gt; canvas,
-      getIntensities
+      getIntensities,
+      columnAt
     };
   }
 );
@@ -2086,12 +2084,9 @@ export {
       heatLabel.textContent = bottom[hottest] ? `Hottest band ≈ ${kHz.toFixed(1)} kHz` : "Spectrum is quiet";
       return;
     }
-    const canvas = fire.getCanvas();
-    const cellWidth = parseFloat(canvas.style.width) / columns;
-    const playheadX = (ws.getCurrentTime() / Math.max(ws.getDuration(), 0.001)) * ws.getWrapper().clientWidth;
-    const column = Math.floor((playheadX - parseFloat(canvas.style.left)) / cellWidth);
+    const column = fire.columnAt(ws.getCurrentTime());
     let heat = 0;
-    if (column >= 0 && column < columns) {
+    if (column >= 0) {
       for (let r = 0; r < rows; r++) heat = Math.max(heat, data[r * columns + column]);
     }
     heatLabel.textContent = `Heat at the playhead: ${heat} / 36`;
