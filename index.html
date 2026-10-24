@@ -522,9 +522,9 @@
 
   <section class="use" aria-labelledby="use-title">
     <h2 id="use-title">Use it</h2>
-    <p>Drop <code>doomfire.esm.js</code> next to your code. It needs wavesurfer.js 8, where plugins are built with <code>WaveSurfer.definePlugin</code>.</p>
+    <p>Install it with <code>npm install wavesurfer-doomfire wavesurfer.js</code>. It needs wavesurfer.js 8, where plugins are built with <code>WaveSurfer.definePlugin</code>.</p>
 <pre id="usage" class="code"><code>import WaveSurfer from 'wavesurfer.js'
-import DoomFirePlugin from './doomfire.esm.js'
+import DoomFirePlugin from 'wavesurfer-doomfire'
 
 const ws = WaveSurfer.create({
   container: '#waveform',
@@ -543,6 +543,16 @@ fire.setOptions({ wind: 'none', palette: ['#000', '#123', '#39f', '#cff'] })</co
     <div class="buttons">
       <button class="ghost" type="button" data-copy="usage">Copy example</button>
       <button class="ghost" type="button" data-copy="plugin-source">Copy doomfire.esm.js</button>
+    </div>
+    <p>Or, without a bundler, load it with a script tag after wavesurfer.js's own, both from the audioBLAST! CDN. The plugin is then <code>WaveSurfer.DoomFire</code>.</p>
+<pre id="usage-script" class="code"><code>&lt;script src="https://cdn.audioblast.org/wavesurfer/8.0.3/wavesurfer.min.js"&gt;&lt;/script&gt;
+&lt;script src="https://cdn.audioblast.org/wavesurfer-doomfire/0.2.0/doomfire.min.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  const ws = WaveSurfer.create({ container: '#waveform', url: '/audio/recording.mp3', barHeight: 0.6 })
+  const fire = ws.registerPlugin(WaveSurfer.DoomFire.create({ source: 'progress' }))
+&lt;/script&gt;</code></pre>
+    <div class="buttons">
+      <button class="ghost" type="button" data-copy="usage-script">Copy script tags</button>
     </div>
     <div class="table-wrap">
       <table>
