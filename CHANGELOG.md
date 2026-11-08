@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-11-08)
 
 - `columnAt(time)` gives the column of `getIntensities()` that a time falls in,
   or -1 if it is out of view. The demo's heat readout uses it, rather than
