@@ -104,4 +104,4 @@ The workflow signs in with npm trusted publishing, which is set up once on npmjs
 
 ## Credits
 
-The fire algorithm and palette are from [doom-fire-algorithm](https://github.com/filipedeschamps/doom-fire-algorithm) by Filipe Deschamps (MIT), after [How DOOM fire was done](https://fabiensanglard.net/doom_fire_psx/) by Fabien Sanglard. MIT licence; see `LICENSE`.
+The fire algorithm and palette are from [doom-fire-algorithm](https://github.com/filipedeschamps/doom-fire-algorithm) by Filipe Deschamps (MIT), after [How DOOM fire was done](https://fabiensanglard.net/doom_fire_psx/) by Fabien Sanglard. MIT licence; `LICENSE` carries both copyright notices, Ed Baker's and Filipe Deschamps's.
