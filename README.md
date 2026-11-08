@@ -90,7 +90,7 @@ npx playwright install chromium   # once
 npm test
 ```
 
-`npm test` runs the browser tests in headless Chromium against the built plugin: `tests/plugin.spec.js` checks the plugin in a real wavesurfer.js (through `tests/harness.html`), `tests/umd.spec.js` checks the script-tag build (through `tests/umd.html`), and `tests/demo.spec.js` checks the demo page, which loads wavesurfer.js from cdn.audioblast.org. The CI workflow runs the type check, the tests, and a check that `dist/` and `index.html` match a fresh build, on every push to `main` and every pull request.
+`npm test` runs the browser tests in headless Chromium against the built plugin: `tests/plugin.spec.js` checks the plugin in a real wavesurfer.js (through `tests/harness.html`), `tests/umd.spec.js` checks the script-tag build (through `tests/umd.html`), `tests/leak.spec.js` registers, unregisters and destroys the plugin over and over and checks, with Chrome's own counts after garbage collection, that nothing from a finished cycle is left alive, and `tests/demo.spec.js` checks the demo page, which loads wavesurfer.js from cdn.audioblast.org. The CI workflow runs the type check, the tests, and a check that `dist/` and `index.html` match a fresh build, on every push to `main` and every pull request.
 
 ## Release
 

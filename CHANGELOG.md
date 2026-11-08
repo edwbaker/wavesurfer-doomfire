@@ -27,6 +27,8 @@
   script is readable code rather than minified.
 - Browser tests run the plugin in a real wavesurfer.js on every push and pull
   request, along with a type check and a check that `dist/` matches the source.
+  A leak test checks that unregistering the plugin, or destroying its player,
+  leaves nothing alive.
 
 ## 0.1.1 (2026-10-23)
 
