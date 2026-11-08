@@ -23,6 +23,9 @@ export default defineConfig({
           args: [
             "--autoplay-policy=no-user-gesture-required",
             "--mute-audio",
+            // Play into a fake output, as on a machine with no sound card: when several browsers start a
+            // real one at once, its clock can stay at zero for seconds.
+            "--disable-audio-output",
             // Run audio in the browser process: starting the audio service's own process can take
             // seconds, and the page waits on it when it opens its first AudioContext.
             "--disable-features=AudioServiceOutOfProcess",

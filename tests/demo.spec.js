@@ -66,7 +66,8 @@ test("plays and pauses", async ({ page }) => {
   const play = page.locator("#play");
   await play.click();
   await expect(play).toHaveText("Pause");
-  await expect(page.locator("#time")).not.toHaveText(/^0:00 /, { timeout: 5_000 });
+  // the audio clock can run slow on a busy machine, so give it time to reach a second
+  await expect(page.locator("#time")).not.toHaveText(/^0:00 /, { timeout: 15_000 });
   await play.click();
   await expect(play).toHaveText("Play");
 });
@@ -92,8 +93,11 @@ test("a file chosen while zoomed in is decoded once and shown whole, from the st
     zoom.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await expect(page.locator("#zoom-value")).toHaveText("200 px/s");
+  // playing, and part-way in: a chapter jump moves the playhead without waiting on the audio clock
   await page.locator("#play").click();
-  await expect(page.locator("#time")).not.toHaveText(/^0:00 /, { timeout: 5_000 });
+  await expect(page.locator("#play")).toHaveText("Pause");
+  await page.getByRole("button", { name: /^Groove/ }).click();
+  await expect(page.locator("#time")).toHaveText(/^0:0[5-9] \//);
 
   await page.locator("#file").setInputFiles({ name: "tone.wav", mimeType: "audio/wav", buffer: wavFile(3) });
   await expect(page.locator("#file-status")).toHaveText("tone.wav · 0:03");
