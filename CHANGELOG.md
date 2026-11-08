@@ -25,7 +25,7 @@
   audioBLAST! CDN.
 - `LICENSE` is one MIT licence carrying both copyright notices, Ed Baker's and
   Filipe Deschamps's, rather than two copies of it, so GitHub recognises it.
-- The demo runs on wavesurfer.js 8.0.3, loaded from cdn.audioblast.org, and its
+- The demo runs on wavesurfer.js 8.0.5, loaded from cdn.audioblast.org, and its
   script is readable code rather than minified.
 - Browser tests run the plugin in a real wavesurfer.js on every push and pull
   request, along with a type check and a check that `dist/` matches the source.

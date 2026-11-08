@@ -19,7 +19,7 @@ It needs wavesurfer.js 8, where plugins are built with `WaveSurfer.definePlugin`
 Or with a script tag, after wavesurfer.js's own, both from the audioBLAST! CDN:
 
 ```html
-<script src="https://cdn.audioblast.org/wavesurfer/8.0.3/wavesurfer.min.js"></script>
+<script src="https://cdn.audioblast.org/wavesurfer/8.0.5/wavesurfer.min.js"></script>
 <script src="https://cdn.audioblast.org/wavesurfer-doomfire/0.2.0/doomfire.min.js"></script>
 <!-- WaveSurfer.DoomFire is now defined -->
 ```
