@@ -1,0 +1,18 @@
+# Weekly pull requests to update the npm packages and the workflows' actions, one per group, so each
+# update arrives with CI's results.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

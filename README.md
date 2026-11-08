@@ -1,6 +1,10 @@
 # DoomFire for wavesurfer.js
 
+[![CI](https://github.com/edwbaker/wavesurfer-doomfire/actions/workflows/ci.yml/badge.svg)](https://github.com/edwbaker/wavesurfer-doomfire/actions/workflows/ci.yml) [![npm](https://img.shields.io/npm/v/wavesurfer-doomfire)](https://www.npmjs.com/package/wavesurfer-doomfire)
+
 A [wavesurfer.js](https://wavesurfer.xyz) 8 plugin that runs the PlayStation DOOM fire over your waveform, lit by the audio. The drawn bars are the fuel: every bar burns as hot as it is loud and the flames climb off its top. Press play and the music stokes it, blazing and throwing sparks at the playhead.
+
+[![The fire burning over a waveform as it plays, with sparks flying at the playhead](https://raw.githubusercontent.com/edwbaker/wavesurfer-doomfire/main/docs/preview.gif)](https://wavesurfer-doomfire.ebaker.me.uk/)
 
 [Try the demo](https://wavesurfer-doomfire.ebaker.me.uk/), which has every option (the same page as `index.html`).
 
@@ -50,6 +54,12 @@ With the script tags, the plugin is `WaveSurfer.DoomFire`:
 const ws = WaveSurfer.create({ container: '#waveform', url: '/audio/recording.mp3', barHeight: 0.6 })
 const fire = ws.registerPlugin(WaveSurfer.DoomFire.create({ source: 'progress' }))
 ```
+
+TypeScript types come with the package, in `dist/doomfire.d.ts`: `DoomFirePluginOptions`, `DoomFireApi`, `DoomFireSource` and the rest.
+
+## How it burns
+
+It is the PlayStation DOOM fire: a grid of cells, each holding a heat from 0 to 36. Every step, each cell takes the heat of the cell below it, less 0 to 2, and the wind carries it sideways as it cools, so heat climbs, fades and flickers. Here the waveform is the fuel: the cells under each drawn bar are kept as hot as the audio there is loud, or as the source says, and the flames rise off them. Playback stokes the fire around the playhead and throws sparks on loud hits. The palette turns each heat into a colour, with 0 see-through so the waveform shows.
 
 ## Options
 
